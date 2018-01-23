@@ -39,6 +39,7 @@ prob <- calculate_proportions(dat_resp, correct, duration,
   ungroup()
 
 
+
 log10_duration_seq_df <- prob %>% distinct(size) %>% 
   crossing(log10_duration = seq(log10(0.01), 
                                 log10(.25), 
