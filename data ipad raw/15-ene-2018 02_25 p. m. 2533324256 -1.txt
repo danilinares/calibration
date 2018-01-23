@@ -1,0 +1,34 @@
+User: 2533324256
+Email: no email
+Date: 15-ene-2018 02:25 p. m.
+Country: ES
+
+Device: iPad 5
+Maximum Frame Rate suported: 60Hz
+Screen Width: 2048pixels
+Screen Height: 1536pixels
+Resolution: 264pp
+Measured Full Brightness when 100% Full Screen White: 514cd/m2
+Screen Brightnes set to: 31% in order to normalise with other iPad models
+
+Age: 37
+Sex: Male
+Group: None of them
+Time diagnosed: 
+Distance cm: 57.0
+Distances measured cm:  80.4549 100.568
+Distance media measured cm: 90.5113
+Number of responses: 280
+
+practice:
+Experiment   Time   Size   InitialPhase   Duration   Contrast   Direction   Frequency   Speed   FixationTime   Answer   Correct   
+1   2.11667   4   216   0.04472   0.42   -1   1   4   0.3   right   1   
+2   8.53337   4   0   0.2   0.42   1   1   4   0.3   left   0   
+3   1.25   4   288   0.12139   0.42   -1   1   4   0.3   left   1   
+4   2.13333   1   288   0.04472   0.42   1   1   4   0.3   right   1   
+5   19.7999   1   72   0.12139   0.42   1   1   4   0.3   left   0   
+6   1.26667   4   144   0.027144   0.42   1   1   4   0.3   right   1   
+7   0.95   1   288   0.01   0.42   -1   1   4   0.308333   left   1   
+8   1.0   4   144   0.04472   0.42   1   1   4   0.3   left   1   
+9   0.983333   4   72   0.04472   0.42   -1   1   4   0.3   left   1   
+10   0.883333   4   288   0.01648   0.42   -1   1   4   0.3   right   1   
