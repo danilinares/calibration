@@ -175,11 +175,46 @@ $(document).ready(function () {
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeSh0aWR5dmVyc2UpXG5saWJyYXJ5KHF1aWNrcHN5KVxubGlicmFyeShicm9vbSlcbmxpYnJhcnkoY293cGxvdClcbmxpYnJhcnkobW9kZWxmcmVlKVxubGlicmFyeShwc3lwaHkpXG5saWJyYXJ5KG1vZGVscilcbmxpc3QuZmlsZXMoXCJSXCIsIGZ1bGwubmFtZXMgPSBUUlVFKSAlPiUgd2Fsayhzb3VyY2UpXG5zb3VyY2UoXCJwYXJhbWV0ZXJzLlJcIilcbiMgcmVhZCBkYXRhIHJlc3BvbnNlIC0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tXG5kYXRfcmVzcF9pcGFkIDwtIHF1aWNrcmVhZGZpbGVzKHBhdGggPSBcImRhdGFcIiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHBhcnRpY2lwYW50ID0gc3RyX3BhZCgxOjEzLCAyLCBwYWQgPSBcIjBcIiksXG4gICAgICAgICAgICAgICAgICAgICAgICAgICBwbGF0Zm9ybSA9IGMoXCJpUGFkXCIpLCBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgIHNlc3Npb24gPSBjKFwiMDFcIikpICU+JVxuICAgICAgICAgICAgICAgICAgICAgICAgICAjc2Vzc2lvbiA9IGMoXCIwMVwiLCBcIjAyXCIpKSAlPiVcbiAgc2VsZWN0KHNlc3Npb24sIHBsYXRmb3JtLCBwYXJ0aWNpcGFudCwgRHVyYXRpb24sIFNpemUsIERpcmVjdGlvbixcbiAgICAgICAgIENvcnJlY3QsIENvbnRyYXN0KSAlPiUgXG4gIHJlbmFtZShkdXJhdGlvbiA9IER1cmF0aW9uLCBzaXplID0gU2l6ZSwgY29udHJhc3QgPSBDb250cmFzdCwgXG4gICAgICAgICBkaXJlY3Rpb24gPSBEaXJlY3Rpb24sIGNvcnJlY3QgPSBDb3JyZWN0KVxuZGF0X3Jlc3BfY3J0IDwtIHF1aWNrcmVhZGZpbGVzKHBhdGggPSBcImRhdGFcIiwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGFydGljaXBhbnQgPXN0cl9wYWQoMToxMywgMiwgcGFkID0gXCIwXCIpLFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHBsYXRmb3JtID0gYyhcIkNSVFwiKSwgXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgIyAgIHNlc3Npb24gPSBjKFwiMDFcIiwgXCIwMlwiKSkgJT4lXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzZXNzaW9uID0gYyhcIjAxXCIpKSAlPiVcbiAgc2VsZWN0KHNlc3Npb24sIHBsYXRmb3JtLCBwYXJ0aWNpcGFudCwgZHVyYXRpb24sIHNpemUsIGRpcmVjdGlvbixcbiAgICAgICAgIGNvcnJlY3QsIGNvbnRyYXN0KSAlPiUgXG4gIG11dGF0ZShzaXplID0gaWZfZWxzZShzaXplID09IDkwLCA0LCAxKSlcbmRhdF9yZXNwIDwtIGRhdF9yZXNwX2NydCAlPiUgXG4gIGJpbmRfcm93cyhkYXRfcmVzcF9pcGFkKSAlPiUgXG4gIG11dGF0ZShkdXJhdGlvbl9zaWduZWQgPSBkdXJhdGlvbiAqIGRpcmVjdGlvbilcbmBgYCJ9 -->
+<pre class="r"><code>library(tidyverse)
+library(quickpsy)
+library(broom)
+library(cowplot)
+library(modelfree)
+library(psyphy)
+library(modelr)
+list.files(&quot;R&quot;, full.names = TRUE) %&gt;% walk(source)
+source(&quot;parameters.R&quot;)
+# read data response -----------------------------------------------------------
+dat_resp_ipad &lt;- quickreadfiles(path = &quot;data&quot;, 
+                                participant = str_pad(1:13, 2, pad = &quot;0&quot;),
+                           platform = c(&quot;iPad&quot;), 
+                           session = c(&quot;01&quot;)) %&gt;%
+                          #session = c(&quot;01&quot;, &quot;02&quot;)) %&gt;%
+  select(session, platform, participant, Duration, Size, Direction,
+         Correct, Contrast) %&gt;% 
+  rename(duration = Duration, size = Size, contrast = Contrast, 
+         direction = Direction, correct = Correct)
+dat_resp_crt &lt;- quickreadfiles(path = &quot;data&quot;, 
+                               participant =str_pad(1:13, 2, pad = &quot;0&quot;),
+                               platform = c(&quot;CRT&quot;), 
+                            #   session = c(&quot;01&quot;, &quot;02&quot;)) %&gt;%
+                              session = c(&quot;01&quot;)) %&gt;%
+  select(session, platform, participant, duration, size, direction,
+         correct, contrast) %&gt;% 
+  mutate(size = if_else(size == 90, 4, 1))
+dat_resp &lt;- dat_resp_crt %&gt;% 
+  bind_rows(dat_resp_ipad) %&gt;% 
+  mutate(duration_signed = duration * direction)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiVW5lcXVhbCBmYWN0b3IgbGV2ZWxzOiBjb2VyY2luZyB0byBjaGFyYWN0ZXJiaW5kaW5nIGNoYXJhY3RlciBhbmQgZmFjdG9yIHZlY3RvciwgY29lcmNpbmcgaW50byBjaGFyYWN0ZXIgdmVjdG9yYmluZGluZyBjaGFyYWN0ZXIgYW5kIGZhY3RvciB2ZWN0b3IsIGNvZXJjaW5nIGludG8gY2hhcmFjdGVyIHZlY3RvclxuIn0= -->
+<pre><code>Unequal factor levels: coercing to characterbinding character and factor vector, coercing into character vectorbinding character and factor vector, coercing into character vector</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiT25lIHBzeWNob21ldHJpYyBjdXJ2ZSIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CmBgYAoK</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiT25lIHBzeWNob21ldHJpYyBjdXJ2ZSIKb3V0cHV0OiBodG1sX25vdGVib29rCi0tLQoKYGBge3J9CmxpYnJhcnkodGlkeXZlcnNlKQpsaWJyYXJ5KHF1aWNrcHN5KQpsaWJyYXJ5KGJyb29tKQpsaWJyYXJ5KGNvd3Bsb3QpCmxpYnJhcnkobW9kZWxmcmVlKQpsaWJyYXJ5KHBzeXBoeSkKbGlicmFyeShtb2RlbHIpCgpsaXN0LmZpbGVzKCJSIiwgZnVsbC5uYW1lcyA9IFRSVUUpICU+JSB3YWxrKHNvdXJjZSkKc291cmNlKCJwYXJhbWV0ZXJzLlIiKQoKIyByZWFkIGRhdGEgcmVzcG9uc2UgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0KZGF0X3Jlc3BfaXBhZCA8LSBxdWlja3JlYWRmaWxlcyhwYXRoID0gImRhdGEiLCAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwYXJ0aWNpcGFudCA9IHN0cl9wYWQoMToxMywgMiwgcGFkID0gIjAiKSwKICAgICAgICAgICAgICAgICAgICAgICAgICAgcGxhdGZvcm0gPSBjKCJpUGFkIiksIAogICAgICAgICAgICAgICAgICAgICAgICAgICBzZXNzaW9uID0gYygiMDEiKSkgJT4lCiAgICAgICAgICAgICAgICAgICAgICAgICAgI3Nlc3Npb24gPSBjKCIwMSIsICIwMiIpKSAlPiUKICBzZWxlY3Qoc2Vzc2lvbiwgcGxhdGZvcm0sIHBhcnRpY2lwYW50LCBEdXJhdGlvbiwgU2l6ZSwgRGlyZWN0aW9uLAogICAgICAgICBDb3JyZWN0LCBDb250cmFzdCkgJT4lIAogIHJlbmFtZShkdXJhdGlvbiA9IER1cmF0aW9uLCBzaXplID0gU2l6ZSwgY29udHJhc3QgPSBDb250cmFzdCwgCiAgICAgICAgIGRpcmVjdGlvbiA9IERpcmVjdGlvbiwgY29ycmVjdCA9IENvcnJlY3QpCgpkYXRfcmVzcF9jcnQgPC0gcXVpY2tyZWFkZmlsZXMocGF0aCA9ICJkYXRhIiwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBwYXJ0aWNpcGFudCA9c3RyX3BhZCgxOjEzLCAyLCBwYWQgPSAiMCIpLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGxhdGZvcm0gPSBjKCJDUlQiKSwgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAjICAgc2Vzc2lvbiA9IGMoIjAxIiwgIjAyIikpICU+JQogICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzZXNzaW9uID0gYygiMDEiKSkgJT4lCiAgc2VsZWN0KHNlc3Npb24sIHBsYXRmb3JtLCBwYXJ0aWNpcGFudCwgZHVyYXRpb24sIHNpemUsIGRpcmVjdGlvbiwKICAgICAgICAgY29ycmVjdCwgY29udHJhc3QpICU+JSAKICBtdXRhdGUoc2l6ZSA9IGlmX2Vsc2Uoc2l6ZSA9PSA5MCwgNCwgMSkpCgoKZGF0X3Jlc3AgPC0gZGF0X3Jlc3BfY3J0ICU+JSAKICBiaW5kX3Jvd3MoZGF0X3Jlc3BfaXBhZCkgJT4lIAogIG11dGF0ZShkdXJhdGlvbl9zaWduZWQgPSBkdXJhdGlvbiAqIGRpcmVjdGlvbikKYGBgCgo=</div>
 
 
 
