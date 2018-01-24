@@ -13,7 +13,8 @@ source("parameters.R")
 dat_resp_ipad <- quickreadfiles(path = "data", 
                                 participant = str_pad(1:13, 2, pad = "0"),
                            platform = c("iPad"), 
-                           session = c("01", "02")) %>%
+                           session = c("01")) %>%
+                          #session = c("01", "02")) %>%
   select(session, platform, participant, Duration, Size, Direction,
          Correct, Contrast) %>% 
   rename(duration = Duration, size = Size, contrast = Contrast, 
@@ -22,7 +23,8 @@ dat_resp_ipad <- quickreadfiles(path = "data",
 dat_resp_crt <- quickreadfiles(path = "data", 
                                participant =str_pad(1:13, 2, pad = "0"),
                                platform = c("CRT"), 
-                               session = c("01", "02")) %>%
+                            #   session = c("01", "02")) %>%
+                              session = c("01")) %>%
   select(session, platform, participant, duration, size, direction,
          correct, contrast) %>% 
   mutate(size = if_else(size == 90, 4, 1))
@@ -38,12 +40,71 @@ prob <- calculate_proportions(dat_resp, correct, duration,
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
   ungroup()
 
+# glm same slope ---------------------------------------------------------------
+glms_same_slope <- prob %>% 
+  group_by(participant, platform) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, 
+                ~glm(cbind(k, r) ~ log10_duration + factor(size), 
+                     data = ., 
+                     family = binomial(mafc.logit(2)))),
+    dur = list(distinct(prob, size) %>% 
+                 crossing(
+                   log10_duration = seq(log10(0.01), log10(.25), 
+                                        length.out = 100))),
+    pred = map2(model, dur, ~tibble(prob = predict(.x, .y, type = "response"))),
+    aic = map_dbl(model, "aic"),
+    estimate = map(model, ~tibble(estimate = tidy(.)$estimate,
+                                  estimaten = 1:3))
+  ) %>% 
+  mutate(m = "same_slope")
 
+# psychometric functions ####
+curves_same_slope <- glms_same_slope %>% 
+  select(participant, platform, dur, pred, m) %>%
+  unnest() %>% 
+  mutate(duration = 10^log10_duration)
 
-log10_duration_seq_df <- prob %>% distinct(size) %>% 
-  crossing(log10_duration = seq(log10(0.01), 
-                                log10(.25), 
-                         length.out = 100))
+# plot psychometric functions ####
+p_pro_size_same_slope <- ggplot(prob, 
+                                aes(x = duration, y = prob, color = factor(size), shape = factor(size))) +
+  facet_grid(platform~ participant) +
+  geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
+  geom_point(size = size_point) +
+  geom_line(data = curves_same_slope, size = size_line) +
+  scale_color_brewer(labels = name_size, palette = "Set1") +
+  scale_shape_discrete(labels = name_size) +
+  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
+  scale_y_continuous(breaks = seq(0, 1,.25)) +
+  labs(x = label_duration, y = label_proportion, 
+       color = label_size, shape = label_size) +
+  theme(legend.position = "top", 
+        legend.text = element_text(size = 9))
+
+ggsave("figures/pro_size_same_slope.pdf", 
+       p_pro_size_same_slope, width = two_columns_width, height = 2.5) 
+
+p_pro_platform_same_slope <- ggplot(prob,
+                                    aes(x = duration, y = prob, 
+                                        color = factor(platform), 
+                                        shape = factor(platform))) +
+  facet_grid(size~ participant,
+             labeller = labeller(size = name_size)) +
+  geom_hline(color = "grey", yintercept = 0.5, size = size_line) +
+  geom_point(size = size_point) +
+  geom_line(data = curves_same_slope, size = size_line) +
+  scale_color_brewer(labels = name_size, palette = "Dark2") +
+  scale_shape_discrete(labels = name_size) +
+  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
+  scale_y_continuous(breaks = seq(0, 1,.25)) +
+  labs(x = label_duration, y = label_proportion,
+       color = label_platform, shape = label_platform) +
+  theme(legend.position = "top", 
+        legend.text = element_text(size = 9))
+
+ggsave("figures/pro_platform_same_slope.pdf", p_pro_platform_same_slope, 
+       width = two_columns_width, height = 2.5) 
 
 
 # glm different slope ----------------------------------------------------------
@@ -107,71 +168,7 @@ p_pro_platform_dif_slope <- ggplot(prob,
 ggsave("figures/pro_platform_dif_slope.pdf", p_pro_platform_dif_slope, 
        width = two_columns_width, height = 2.5) 
 
-# glm same slope ---------------------------------------------------------------
-glms_same_slope <- prob %>% 
-  group_by(participant, platform) %>% 
-  nest() %>% 
-  mutate(
-    model = map(data, 
-                ~glm(cbind(k, r) ~ log10_duration + factor(size), 
-                     data = ., 
-                     family = binomial(mafc.logit(2)))),
-    dur = list(distinct(prob, size) %>% 
-                 crossing(
-                   log10_duration = seq(log10(0.01), log10(.25), 
-                                        length.out = 100))),
-    pred = map2(model, dur, ~tibble(prob = predict(.x, .y, type = "response"))),
-    aic = map_dbl(model, "aic"),
-    estimate = map(model, ~tibble(estimate = tidy(.)$estimate,
-                                  estimaten = 1:3))
-  ) %>% 
-  mutate(m = "same_slope")
 
-# psychometric functions ####
-curves_same_slope <- glms_same_slope %>% 
-  select(participant, platform, dur, pred, m) %>%
-  unnest() %>% 
-  mutate(duration = 10^log10_duration)
-
-# plot psychometric functions ####
-p_pro_size_same_slope <- ggplot(prob, 
-  aes(x = duration, y = prob, color = factor(size), shape = factor(size))) +
-  facet_grid(platform~ participant) +
-  geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
-  geom_point(size = size_point) +
-  geom_line(data = curves_same_slope, size = size_line) +
-  scale_color_brewer(labels = name_size, palette = "Set1") +
-  scale_shape_discrete(labels = name_size) +
-  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25)) +
-  labs(x = label_duration, y = label_proportion, 
-       color = label_size, shape = label_size) +
-  theme(legend.position = "top", 
-        legend.text = element_text(size = 9))
-
-ggsave("figures/pro_size_same_slope.pdf", 
-       p_pro_size_same_slope, width = two_columns_width, height = 2.5) 
-
-p_pro_platform_same_slope <- ggplot(prob,
-                                   aes(x = duration, y = prob, 
-                                       color = factor(platform), 
-                                       shape = factor(platform))) +
-  facet_grid(size~ participant,
-             labeller = labeller(size = name_size)) +
-  geom_hline(color = "grey", yintercept = 0.5, size = size_line) +
-  geom_point(size = size_point) +
-  geom_line(data = curves_same_slope, size = size_line) +
-  scale_color_brewer(labels = name_size, palette = "Dark2") +
-  scale_shape_discrete(labels = name_size) +
-  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25)) +
-  labs(x = label_duration, y = label_proportion,
-       color = label_platform, shape = label_platform) +
-  theme(legend.position = "top", 
-        legend.text = element_text(size = 9))
-
-ggsave("figures/pro_platform_same_slope.pdf", p_pro_platform_same_slope, 
-       width = two_columns_width, height = 2.5) 
 
 # plot all psychometric functions ----------------------------------------------
 p_psycho_same <- plot_grid(p_pro_size_same_slope, 
