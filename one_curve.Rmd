@@ -18,9 +18,8 @@ source("parameters.R")
 # read data response -----------------------------------------------------------
 dat_resp_ipad <- quickreadfiles(path = "data", 
                                 participant = str_pad(1:13, 2, pad = "0"),
-                           platform = c("iPad"), 
-                           session = c("01")) %>%
-                          #session = c("01", "02")) %>%
+                                platform = c("iPad"), 
+                                session = c("01", "02")) %>%
   select(session, platform, participant, Duration, Size, Direction,
          Correct, Contrast) %>% 
   rename(duration = Duration, size = Size, contrast = Contrast, 
@@ -29,8 +28,7 @@ dat_resp_ipad <- quickreadfiles(path = "data",
 dat_resp_crt <- quickreadfiles(path = "data", 
                                participant =str_pad(1:13, 2, pad = "0"),
                                platform = c("CRT"), 
-                            #   session = c("01", "02")) %>%
-                              session = c("01")) %>%
+                               session = c("01", "02")) %>%
   select(session, platform, participant, duration, size, direction,
          correct, contrast) %>% 
   mutate(size = if_else(size == 90, 4, 1))
@@ -39,5 +37,65 @@ dat_resp_crt <- quickreadfiles(path = "data",
 dat_resp <- dat_resp_crt %>% 
   bind_rows(dat_resp_ipad) %>% 
   mutate(duration_signed = duration * direction)
+```
+
+### Select one condition, predict and plot with confidence intervals
+```{r}
+dat_resp_one <- dat_resp %>% 
+  filter(participant =="01",  platform == "CRT", size == 1)
+
+prob_one <- calculate_proportions(dat_resp_one, correct, duration,
+                              platform, size, participant) %>% 
+  mutate(r = n - k, log10_duration = log10(duration)) %>% 
+  ungroup()
+
+model_one <- glm(cbind(k, r) ~ log10_duration, 
+             data = prob_one, 
+             family = binomial(mafc.logit(2)))
+
+log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
+                                                     log10(.25), 
+                                                     length.out = 100))
+pre <- augment(model, 
+               newdata = log10_duration_seq_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - .se.fit, 
+         fitted_max = .fitted + .se.fit)
+
+
+p <- ggplot() +
+  geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
+  geom_ribbon(data = pre, aes(x = log10_duration,
+                              ymin = fitted_min, ymax = fitted_max), 
+              fill = "grey") +
+  geom_line(data = pre, aes(x = log10_duration, y = .fitted)) 
+p
+```
+
+### Obtaining the the threshold
+
+Following Knoblauch 
+```{r}
+coefi <- model_one %>% tidy() %>% pull(estimate) 
+
+sigma <- 1 / coefi[2]
+mu <- -coefi[1] / coefi[2]
+
+p <- p +
+  geom_segment(data = tibble(mu, prob = .75), aes(x = log10(0.005), xend = mu, 
+                                                  y = 0.75, yend = .75)) +
+  geom_segment(data = tibble(mu, prob = .75), aes(x = mu, xend = mu, 
+                                                  y = 0, yend = .75))
+p
+```
+
+### Significance of the coeficients
+
+```{r}
+model_one %>% summary()
+```
+Or
+```{r}
+model_one %>% tidy()
 ```
 
