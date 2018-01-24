@@ -598,3 +598,6 @@ fit <- quickpsy(prob, duration, k, n,
 
 plot_grid(plot(fit, color = size), plot(fit, color = platform))
 
+
+#comentario rafa
+
