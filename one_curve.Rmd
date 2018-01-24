@@ -72,6 +72,83 @@ p <- ggplot() +
 p
 ```
 
+### Standard error
+As the ribbon in the graph corresponds to the plus minus standard error,  here I revise the theory of standard error with the example in which the statistic is the sample mean
+
+The standard error $se$ of an statistic (a function of the data) $\widehat{\theta}$ is defined as
+
+$$se = \sqrt{V(\widehat{\theta})}$$
+The variance could be calculated because $\widehat{\theta}$ is a random variable.
+
+For the sample mean
+ 
+$$se(\overline{X}_n)=\sqrt{V(\overline{X}_n)} = \frac{\sigma}{\sqrt{n}}$$
+
+where $\sigma^2$ is the variance of one of the random variable $X_i$ that conforms the sample.
+    
+Demonstration
+
+$$V[\overline{X}_n]=V(\frac{1}{n}\sum_i X_i) = \frac{1}{n^2} \sum_i  V(X_i) = \frac{1}{n^2} n \sigma^2 = \frac{\sigma^2}{n}$$
+
+#### Relation with confidence intervals
+
+A $1 - \alpha$ confidence interval for a parameter $\theta$ is an interval $C_n = (a,b)$ where $a=a(X_1,\dotsc,X_n)$ and $b=b(X_1,\dotsc,X_n)$ are functions of the data such that $P(\theta \in C_n) = 1 - \alpha$.
+
+If $\widehat{\theta_n}$ is normally distributed $N(\mu,se^2)$ with $se^2=\sigma^2/n$, 
+which happens when the sample is large (central limit theorem)
+
+and $\sigma^2$ is known
+
+then
+
+$$C_n = (\widehat{\theta_n} - z_{1-\alpha/2} \, se, \widehat{\theta_n} + z_{1-\alpha/2}\, se)$$
+
+Demonstration
+
+$$P \left( \widehat{\theta_n} - z_{1-\alpha/2} \,se < \theta < \widehat{\theta_n} + z_{1-\alpha/2} \,se \right) = P \left( -z_{1-\alpha/2} < \frac{\widehat{\theta_n} - \theta}{se} <  z_{1-\alpha/2} \right)=P\left(- z_{1-\alpha/2} < Z <  z_{1-\alpha/2} \right)=1-\alpha$$
+
+if $\alpha = .05$ then 
+
+$$ z_{1-\alpha/2} = 1.96$$
+```{r}
+qnorm(1 - .025)
+```
+which gives the famous rule of plus minus two times the standard error. 
+
+If $\sigma^2$ is unknown
+
+then
+
+$$C_n = (\widehat{\theta_n} - t_{1-\alpha/2} \, \widehat{se}, \widehat{\theta_n} + t_{1-\alpha/2}\, \widehat{se})$$
+
+with $\widehat{se}^2=S^2_n / n$
+
+where $S^2_n$ is the sample variance
+
+$$S_n^2=\sum_{i=1}^{n}\frac{(X_i-\overline{X}_n)^2}{n-1}$$
+
+Demonstration
+
+$$P \left( \widehat{\theta_n} - t_{1-\alpha/2} \,\widehat{se} < \theta < \widehat{\theta_n} + t_{1-\alpha/2} \,  \widehat{se} \right) = P \left( -t_{1-\alpha/2} < \frac{\widehat{\theta_n} - \theta}{\widehat{se}} <  t_{1-\alpha/2} \right)=P\left( -t_{1-\alpha/2} < T <  t_{1-\alpha/2} \right)=1-\alpha$$
+
+if $\alpha = .05$ and n = 10 then 
+
+$$ t_{1-\alpha/2} = 2.26$$
+```{r}
+qt(1 - .025, 10 - 1)
+```
+
+If n large, we get the same that for known variance
+```{r}
+qt(1 - .025, 1000 -1)
+```
+
+#### NUESTRO CASO
+I don't understand well which is the statistics for which $se$ is calculated. 
+
+Given that in some guidelines it is said that you should report confidence intervals instead of standard error, I guess we will need to use the t-statistics to multiply the standard error when we fix alpha to .05 or 0.01
+    
+
 ### Obtaining the the threshold
 
 Following Knoblauch 
