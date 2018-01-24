@@ -600,4 +600,6 @@ plot_grid(plot(fit, color = size), plot(fit, color = platform))
 
 
 #comentario rafa
+#comentario rafa 2
+
 
