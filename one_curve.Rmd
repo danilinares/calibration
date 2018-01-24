@@ -44,8 +44,7 @@ dat_resp <- dat_resp_crt %>%
 dat_resp_one <- dat_resp %>% 
   filter(participant =="01",  platform == "CRT", size == 1)
 
-prob_one <- calculate_proportions(dat_resp_one, correct, duration,
-                              platform, size, participant) %>% 
+prob_one <- calculate_proportions(dat_resp_one, correct, duration) %>% 
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
   ungroup()
 
@@ -56,7 +55,7 @@ model_one <- glm(cbind(k, r) ~ log10_duration,
 log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
                                                      log10(.25), 
                                                      length.out = 100))
-pre <- augment(model, 
+pre <- augment(model_one, 
                newdata = log10_duration_seq_df,
                type.predict = "response") %>% 
   mutate(fitted_min = .fitted - .se.fit, 
@@ -176,3 +175,18 @@ Or
 model_one %>% tidy()
 ```
 
+### Duration does something?
+
+```{r}
+model_one %>% anova(test = "Chisq")
+```
+
+Yes, adding log10_duration is statistically highly  significant
+
+```{r}
+model_one %>% summary()
+```
+
+### DUDA
+
+Por que sale tan diference con anova y summary
