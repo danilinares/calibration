@@ -1,0 +1,8 @@
+---
+title: "One psychometric curve"
+output: html_notebook
+---
+
+```{r}
+```
+
