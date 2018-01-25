@@ -46,9 +46,9 @@ pre_two_interaction <- augment(model_two_interaction,
 
 ggplot() +
   geom_point(data = prob_two, 
-             aes(x = log10_duration, y = prob, color = factor(size))) +
+             aes(x = log10_duration, y = prob, color = size)) +
   geom_line(data = pre_two_interaction, 
-            aes(x = log10_duration, y = .fitted, color = factor(size))) 
+            aes(x = log10_duration, y = .fitted, color = size)) 
 ```
 
 ### Doing it for each curve individually
@@ -92,3 +92,30 @@ model_two_interaction_individually %>%
 ```
 
 ### fitting all data with a single psychometric function
+```{r}
+model_one <- glm(cbind(k, r) ~ log10_duration , 
+             data = prob_two, 
+             family = binomial(mafc.logit(2)))
+
+log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
+                                       log10(.25), length.out = 100))
+
+pre_one <- augment(model_one, 
+               newdata = log10_duration_seq_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - .se.fit, 
+         fitted_max = .fitted + .se.fit)
+
+ggplot() +
+  geom_point(data = prob_two, 
+             aes(x = log10_duration, y = prob, color = size)) +
+  geom_line(data = pre_one, 
+            aes(x = log10_duration, y = .fitted))
+```
+
+#### Comparing the one psychometric function vs two psychometric functions
+```{r}
+anova(model_two_interaction, model_one, test = "Chisq")
+```
+The model with two psychometric functions significantly improves
+

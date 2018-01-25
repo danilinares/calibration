@@ -10,12 +10,197 @@ source("parameters.R")
 
 load("logdata/dat_resp.RData")
 
-
 # probabilities ----------------------------------------------------------------
 prob <- calculate_proportions(dat_resp, correct, duration,
                               platform, size, participant) %>% 
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
   ungroup()
+
+# durations --------------------------------------------------------------------
+log10_duration_seq_size_df <- prob %>% distinct(size) %>% 
+  crossing(tibble(log10_duration = seq(log10(0.005), 
+                                       log10(.25), length.out = 100)))
+
+log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
+                                       log10(.25), length.out = 100))
+
+# glm different slope ----------------------------------------------------------
+dif_slope <- prob %>% 
+  group_by(participant, platform) %>% 
+  nest() %>% 
+  mutate(
+    m = "dif_slope",
+    model = map(data, 
+                ~glm(cbind(k, r) ~ size / log10_duration, 
+                     data = ., 
+                     family = binomial(mafc.logit(2)))), 
+    psycho = map(model,
+               ~tibble(prob = predict(.,
+                                      newdata = log10_duration_seq_size_df, 
+                                      type = "response")) %>% 
+                 bind_cols(log10_duration_seq_size_df))
+  )
+
+# hacer la predict con augment da errores (cuando hay Nas  creo)
+
+psycho_dif_slope <- dif_slope %>% 
+  select(participant, platform, m, psycho) %>%
+  unnest() %>% 
+  mutate(duration = 10^log10_duration)
+
+p_size_dif_slope <- ggplot(prob,
+                           aes(x = duration, y = prob, 
+                               color = size, shape = size)) +
+  facet_grid(platform~ participant) +
+  geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
+  geom_point(size = size_point) +
+  geom_line(data = psycho_dif_slope, size = size_line) +
+  scale_color_brewer(labels = name_size, palette = "Set1") +
+  scale_shape_discrete(labels = name_size) +
+  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
+  scale_y_continuous(breaks = seq(0, 1,.25)) +
+  labs(x = label_duration, y = label_proportion, 
+       color = label_size, shape = label_size) +
+  theme(legend.position = "top", 
+        legend.text = element_text(size = 9))
+p_size_dif_slope
+
+ggsave("figures/size_dif_slope.pdf", p_size_dif_slope, 
+       width = two_columns_width, height = 2.5) 
+
+# glm different slope only one psychometric function ---------------------------
+dif_slope_one <- prob %>% 
+  group_by(participant, platform) %>% 
+  nest() %>% 
+  mutate(
+    m = "dif_slope_one",
+    model = map(data, 
+                ~glm(cbind(k, r) ~ log10_duration, 
+                     data = ., 
+                     family = binomial(mafc.logit(2)))), 
+    psycho = map(model,
+                 ~tibble(prob = predict(.,
+                                        newdata = log10_duration_seq_df, 
+                                        type = "response")) %>% 
+                   bind_cols(log10_duration_seq_df))
+  )
+
+psycho_dif_slope_one <- dif_slope_one %>% 
+  select(participant, platform, m, psycho) %>%
+  unnest() %>% 
+  mutate(duration = 10^log10_duration)
+
+p_size_dif_slope_one <- ggplot(prob) +
+  facet_grid(platform~ participant) +
+  geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
+  geom_point(size = size_point,
+             aes(x = duration, y = prob, color = size, shape = size)) +
+  geom_line(data = psycho_dif_slope_one, size = size_line,
+            aes(x = duration, y = prob)) +
+  scale_color_brewer(labels = name_size, palette = "Set1") +
+  scale_shape_discrete(labels = name_size) +
+  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
+  scale_y_continuous(breaks = seq(0, 1,.25)) +
+  labs(x = label_duration, y = label_proportion, 
+       color = label_size, shape = label_size) +
+  theme(legend.position = "top", 
+        legend.text = element_text(size = 9))
+p_size_dif_slope_one
+
+ggsave("figures/size_dif_slope_one.pdf", p_size_dif_slope_one, 
+       width = two_columns_width, height = 2.5) 
+
+
+# comparing one vs two psychometric functions -------------------------------------------------------------------
+glms <-  dif_slope %>% bind_rows(dif_slope_one)
+
+anov <- glms %>% 
+  select(participant, platform, model, m) %>% 
+  spread(m, model) %>% 
+  mutate(anov = map2(dif_slope, dif_slope_one, anova, test = "Chisq"), 
+         p.value = map_dbl(anov, ~.$`Pr(>Chi)`[2])) %>% # usar broom 
+  select(participant, platform, p.value, everything()) %>% 
+  filter(p.value > .05)
+
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+dif_slope$model[[2]] %>% augment(#newdata = log10_duration_seq_size_df,
+                                 type.predict = "response")
+
+    pred = map(model, ~augment(., 
+                               newdata = log10_duration_seq_size_df,
+                               type.predict = "response"))
+  )
+ 
+dif_slope$model %>% 
+  map(~augment(.,newdata = log10_duration_seq_size_df,
+               type.predict = "response"))
+
+dif_slope$model[[4]] %>% augment(newdata = log10_duration_seq_size_df,
+               type.predict = "response")
+
+glms_same_slope <- prob %>% 
+  group_by(participant, platform) %>% 
+  nest() %>% 
+  mutate(
+    model = map(data, 
+                ~glm(cbind(k, r) ~ log10_duration + size, 
+                     data = ., 
+                     family = binomial(mafc.logit(2)))),
+    dur = list(distinct(prob, size) %>% 
+                 crossing(
+                   log10_duration = seq(log10(0.01), log10(.25), 
+                                        length.out = 100))),
+    pred = map2(model, dur, ~tibble(prob = predict(.x, .y, type = "response"))),
+    aic = map_dbl(model, "aic"),
+    estimate = map(model, ~tibble(estimate = tidy(.)$estimate,
+                                  estimaten = 1:3))
+  ) %>% 
+  mutate(m = "same_slope")
+
+# psychometric functions ####
+curves_dif_slope <- glms_dif_slope %>% 
+  select(participant, platform, pred, m) %>%
+  unnest() %>% 
+  mutate(duration = 10^log10_duration)
+
+# plot psychometric functions ####
+
+
+p_pro_platform_dif_slope <- ggplot(prob,
+                                   aes(x = duration, y = prob, 
+                                       color = factor(platform), 
+                                       shape = factor(platform))) +
+  facet_grid(size~ participant,
+             labeller = labeller(size = name_size)) +
+  geom_hline(color = "grey", yintercept = 0.5, size = size_line) +
+  geom_point(size = size_point) +
+  geom_line(data = curves_dif_slope, size = size_line) +
+  scale_color_brewer(labels = name_size, palette = "Dark2") +
+  scale_shape_discrete(labels = name_size) +
+  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
+  scale_y_continuous(breaks = seq(0, 1,.25)) +
+  labs(x = label_duration, y = label_proportion,
+       color = label_platform, shape = label_platform) +
+  theme(legend.position = "top", 
+        legend.text = element_text(size = 9))
+
+ggsave("figures/pro_platform_dif_slope.pdf", p_pro_platform_dif_slope, 
+       width = two_columns_width, height = 2.5) 
+
 
 # glm same slope ---------------------------------------------------------------
 glms_same_slope <- prob %>% 
@@ -82,68 +267,6 @@ p_pro_platform_same_slope <- ggplot(prob,
         legend.text = element_text(size = 9))
 
 ggsave("figures/pro_platform_same_slope.pdf", p_pro_platform_same_slope, 
-       width = two_columns_width, height = 2.5) 
-
-
-# glm different slope ----------------------------------------------------------
-glms_dif_slope <- prob %>% 
-  group_by(participant, platform) %>% 
-  nest() %>% 
-  mutate(
-    model = map(data, 
-                ~glm(cbind(k, r) ~ log10_duration * size, 
-                     data = ., 
-                     family = binomial(mafc.logit(2)))),
-    pred = map(model, ~augment(., 
-                               newdata = log10_duration_seq_df,
-                               type.predict = "response")),
-    m = "dif_slope")
-
-# psychometric functions ####
-curves_dif_slope <- glms_dif_slope %>% 
-  select(participant, platform, pred, m) %>%
-  unnest() %>% 
-  mutate(duration = 10^log10_duration)
-
-# plot psychometric functions ####
-p_pro_size_dif_slope <- ggplot(prob,
-                               aes(x = duration, y = prob, color = factor(size), shape = factor(size))) +
-  facet_grid(platform~ participant) +
-  geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
-  geom_point(size = size_point) +
-  geom_line(data = curves_dif_slope, size = size_line) +
-  scale_color_brewer(labels = name_size, palette = "Set1") +
-  scale_shape_discrete(labels = name_size) +
-  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25)) +
-  labs(x = label_duration, y = label_proportion, 
-       color = label_size, shape = label_size) +
-  theme(legend.position = "top", 
-        legend.text = element_text(size = 9))
-p_pro_size_dif_slope
-
-ggsave("figures/pro_size_dif_slope.pdf", p_pro_size_dif_slope, 
-       width = two_columns_width, height = 2.5) 
-
-p_pro_platform_dif_slope <- ggplot(prob,
-                                        aes(x = duration, y = prob, 
-                                            color = factor(platform), 
-                                            shape = factor(platform))) +
-  facet_grid(size~ participant,
-             labeller = labeller(size = name_size)) +
-  geom_hline(color = "grey", yintercept = 0.5, size = size_line) +
-  geom_point(size = size_point) +
-  geom_line(data = curves_dif_slope, size = size_line) +
-  scale_color_brewer(labels = name_size, palette = "Dark2") +
-  scale_shape_discrete(labels = name_size) +
-  scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25)) +
-  labs(x = label_duration, y = label_proportion,
-       color = label_platform, shape = label_platform) +
-  theme(legend.position = "top", 
-        legend.text = element_text(size = 9))
-
-ggsave("figures/pro_platform_dif_slope.pdf", p_pro_platform_dif_slope, 
        width = two_columns_width, height = 2.5) 
 
 
