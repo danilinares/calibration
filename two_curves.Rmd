@@ -45,6 +45,78 @@ pre_two_interaction <- augment(model_two_interaction,
   mutate(fitted_min = .fitted - .se.fit, 
          fitted_max = .fitted + .se.fit)
 
+p <- ggplot() +
+  geom_point(data = prob_two, aes(x = log10_duration, y = prob, 
+                                  color = factor(size)))+
+  # geom_ribbon(data = pre, aes(x = log10_duration,
+  #                             ymin = fitted_min, ymax = fitted_max), 
+  #             fill = "grey") +
+  geom_line(data = pre_two_interaction, aes(x = log10_duration, y = .fitted, 
+                                            color = factor(size))) 
+p
+```
+
+### Doing it for each curve individually
+```{r}
+dat_resp_two <- dat_resp %>% 
+  filter(participant =="03",  platform == "CRT")
+
+prob_two <- calculate_proportions(dat_resp_two, correct, 
+                                  duration, size) %>% 
+  mutate(r = n - k, log10_duration = log10(duration)) %>% 
+  ungroup()
+
+model_two_interaction_individually <- prob_two %>% 
+  group_by(size) %>% 
+  nest() %>% 
+  mutate(model = map(data, 
+                     ~glm(cbind(k, r) ~ log10_duration, 
+                          data = ., 
+                          family = binomial(mafc.logit(2))))
+         )
+ 
+
+```
+
+We can see that we obtain the same coefficients, with the same standard error, p.values...
+```{r}
+model_two_interaction %>% tidy()
+model_two_interaction_individually$model %>% map(tidy)
+```
+
+The sum of the log likelihood, AIC, deviance and df. residual of the separate model corresponds to the all-together model, but not all the glance variables
+```{r}
+model_two_interaction %>% glance()
+
+model_two_interaction_individually %>% 
+  transmute(glance = map(model, glance)) %>% 
+  unnest() %>% 
+  summarise_all(sum)
+```
+
+
+Augment sale lo mismo para las predicciones y los standard error pero no para todos los valores 
+```{r}
+model_two_interaction %>% augment() %>% 
+  select(-1) %>% #elimino 1a col porque es una matriz y es un rollo  
+  arrange(size)
+
+model_two_interaction_individually %>% 
+  mutate(augment = map(model, augment), 
+         augment = map(augment, select, -1)) %>% 
+  select(-data, -model) %>% 
+  unnest()
+```
+
+
+log10_duration_seq_size_df <- prob_two %>% distinct(size) %>% 
+  crossing(tibble(log10_duration = seq(log10(0.005), 
+                                       log10(.25), length.out = 100)))
+pre_two_interaction <- augment(model_two_interaction, 
+               newdata = log10_duration_seq_size_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - .se.fit, 
+         fitted_max = .fitted + .se.fit)
 
 p <- ggplot() +
   geom_point(data = prob_two, aes(x = log10_duration, y = prob, 
