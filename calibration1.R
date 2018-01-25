@@ -30,7 +30,8 @@ dat_resp_crt <- quickreadfiles(path = "data",
 
 dat_resp <- dat_resp_crt %>% 
   bind_rows(dat_resp_ipad) %>% 
-  mutate(duration_signed = duration * direction)
+  mutate(size = if_else(size == 1, "Small", "Large"), 
+                        duration_signed = duration * direction)
 
 # probabilities ----------------------------------------------------------------
 prob <- calculate_proportions(dat_resp, correct, duration,
