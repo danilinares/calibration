@@ -13,30 +13,8 @@ library(psyphy)
 library(modelr)
 
 list.files("R", full.names = TRUE) %>% walk(source)
-source("parameters.R")
+load("logdata/dat_resp.RData")
 
-# read data response -----------------------------------------------------------
-dat_resp_ipad <- quickreadfiles(path = "data", 
-                                participant = str_pad(1:13, 2, pad = "0"),
-                                platform = c("iPad"), 
-                                session = c("01", "02")) %>%
-  select(session, platform, participant, Duration, Size, Direction,
-         Correct, Contrast) %>% 
-  rename(duration = Duration, size = Size, contrast = Contrast, 
-         direction = Direction, correct = Correct)
-
-dat_resp_crt <- quickreadfiles(path = "data", 
-                               participant =str_pad(1:13, 2, pad = "0"),
-                               platform = c("CRT"), 
-                               session = c("01", "02")) %>%
-  select(session, platform, participant, duration, size, direction,
-         correct, contrast) %>% 
-  mutate(size = if_else(size == 90, 4, 1))
-
-
-dat_resp <- dat_resp_crt %>% 
-  bind_rows(dat_resp_ipad) %>% 
-  mutate(duration_signed = duration * direction)
 ```
 
 ### Select two conditions, predict and plot with confidence intervals
@@ -49,16 +27,14 @@ prob_two <- calculate_proportions(dat_resp_two, correct,
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
   ungroup()
 
-model_two_interaction <- glm(cbind(k, r) ~ factor(size) / log10_duration - 1, 
+model_two_interaction <- glm(cbind(k, r) ~ size / log10_duration - 1, 
              data = prob_two, 
              family = binomial(mafc.logit(2)))
 
-model_two_interaction <- glm(cbind(k, r) ~ factor(size) + 
-                               factor(size):log10_duration - 1, 
-             data = prob_two, 
-             family = binomial(mafc.logit(2)))
-# Alternative (Knoblauch):   
-#  factor(size) + factor(size):log10_duration - 1 
+# Alternatives (Knoblauch) that are the same model:   
+# size + size:log10_duration - 1 
+# size * log10_duration - log10_duration - 1
+
 
 log10_duration_seq_size_df <- prob_two %>% distinct(size) %>% 
   crossing(tibble(log10_duration = seq(log10(0.005), 

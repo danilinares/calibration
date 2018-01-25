@@ -1,5 +1,4 @@
 library(tidyverse)
-library(quickpsy)
 library(broom)
 library(cowplot)
 library(modelfree)
@@ -9,29 +8,8 @@ library(modelr)
 list.files("R", full.names = TRUE) %>% walk(source)
 source("parameters.R")
 
-# read data response -----------------------------------------------------------
-dat_resp_ipad <- quickreadfiles(path = "data", 
-                                participant = str_pad(1:13, 2, pad = "0"),
-                                platform = c("iPad"), 
-                                session = c("01", "02")) %>%
-  select(session, platform, participant, Duration, Size, Direction,
-         Correct, Contrast) %>% 
-  rename(duration = Duration, size = Size, contrast = Contrast, 
-         direction = Direction, correct = Correct)
+load("logdata/dat_resp.RData")
 
-dat_resp_crt <- quickreadfiles(path = "data", 
-                               participant =str_pad(1:13, 2, pad = "0"),
-                               platform = c("CRT"), 
-                               session = c("01", "02")) %>%
-  select(session, platform, participant, duration, size, direction,
-         correct, contrast) %>% 
-  mutate(size = if_else(size == 90, 4, 1))
-
-
-dat_resp <- dat_resp_crt %>% 
-  bind_rows(dat_resp_ipad) %>% 
-  mutate(size = if_else(size == 1, "Small", "Large"), 
-                        duration_signed = duration * direction)
 
 # probabilities ----------------------------------------------------------------
 prob <- calculate_proportions(dat_resp, correct, duration,
@@ -45,7 +23,7 @@ glms_same_slope <- prob %>%
   nest() %>% 
   mutate(
     model = map(data, 
-                ~glm(cbind(k, r) ~ log10_duration + factor(size), 
+                ~glm(cbind(k, r) ~ log10_duration + size, 
                      data = ., 
                      family = binomial(mafc.logit(2)))),
     dur = list(distinct(prob, size) %>% 
@@ -67,7 +45,8 @@ curves_same_slope <- glms_same_slope %>%
 
 # plot psychometric functions ####
 p_pro_size_same_slope <- ggplot(prob, 
-                                aes(x = duration, y = prob, color = factor(size), shape = factor(size))) +
+                                aes(x = duration, y = prob, 
+                                    color = size, shape = size)) +
   facet_grid(platform~ participant) +
   geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
   geom_point(size = size_point) +
