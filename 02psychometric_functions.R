@@ -158,8 +158,8 @@ same_slope <- prob %>%
                  se.fit = TRUE)) %>% 
         bind_cols(log10_duration_seq_size_df) %>% 
         rename(prob = fit) %>% 
-        mutate(prob_min = prob - se.fit, 
-        prob_max = prob + se.fit)
+        mutate(prob_min = prob - 2 * se.fit, 
+        prob_max = prob + 2 * se.fit)
       )
     )
 
@@ -177,15 +177,16 @@ p_size_same_slope <- ggplot(prob,
   geom_ribbon(data = psycho_same_slope, 
               aes(x = duration,
                   ymin = prob_min, ymax = prob_max, 
-                  fill = size), alpha = .25) +
+                  fill = size), colour = NA, alpha = alpha_fill_level) +
   geom_point(size = size_point) +
   geom_line(data = psycho_same_slope, size = size_line) +
   scale_color_brewer(labels = name_size, palette = "Set1") +
+  scale_fill_brewer(labels = name_size, palette = "Set1") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
   scale_y_continuous(breaks = seq(0, 1,.25), limits = c(0,1)) +
   labs(x = label_duration, y = label_proportion, 
-       color = label_size, shape = label_size) +
+       color = label_size, shape = label_size, fill = label_size) +
   theme(legend.position = "top", 
         legend.text = element_text(size = 9)) 
 
