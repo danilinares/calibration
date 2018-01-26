@@ -97,6 +97,8 @@ p_size_dif_slope_one <- ggplot(prob) +
              aes(x = duration, y = prob, color = size, shape = size)) +
   geom_line(data = psycho_dif_slope_one, size = size_line,
             aes(x = duration, y = prob)) +
+  geom_line(data = psycho_dif_slope, size = size_line,
+            aes(x = duration, y = prob, color = size)) +
   scale_color_brewer(labels = name_size, palette = "Set1") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
@@ -120,7 +122,13 @@ anov <- glms %>%
   mutate(anov = map2(dif_slope, dif_slope_one, anova, test = "Chisq"), 
          p.value = map_dbl(anov, ~.$`Pr(>Chi)`[2])) %>% # usar broom 
   select(participant, platform, p.value, everything()) %>% 
-  filter(p.value > .05)
+  filter(p.value > .01)
+
+#' the result is in the line of two participants not showing suppression,
+#' but to what we really need to do is too calculate the threshold and 
+#' assess differences on the thresholds
+
+
 
     
     

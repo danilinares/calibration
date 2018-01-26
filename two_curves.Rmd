@@ -1,5 +1,5 @@
 ---
-title: "One psychometric curve"
+title: "Two psychometric curves"
 output: html_notebook
 ---
 
@@ -20,7 +20,7 @@ load("logdata/dat_resp.RData")
 ### Select two conditions, predict and plot with confidence intervals
 ```{r}
 dat_resp_two <- dat_resp %>% 
-  filter(participant =="03",  platform == "CRT")
+  filter(participant =="04",  platform == "CRT")
 
 prob_two <- calculate_proportions(dat_resp_two, correct, 
                                   duration, size) %>% 
@@ -37,7 +37,9 @@ model_two_interaction <- glm(cbind(k, r) ~ size / log10_duration - 1,
 
 log10_duration_seq_size_df <- prob_two %>% distinct(size) %>% 
   crossing(tibble(log10_duration = seq(log10(0.005), 
-                                       log10(.25), length.out = 100)))
+                                       log10(.25), 
+                                       length.out = 100)))
+
 pre_two_interaction <- augment(model_two_interaction, 
                newdata = log10_duration_seq_size_df,
                type.predict = "response") %>% 
@@ -119,3 +121,56 @@ anova(model_two_interaction, model_one, test = "Chisq")
 ```
 The model with two psychometric functions significantly improves
 
+### Plotting the same slope 
+
+```{r}
+model_two_interaction_one_slope <- glm(
+  cbind(k, r) ~ size + log10_duration - 1, 
+             data = prob_two, 
+             family = binomial(mafc.logit(2)))
+
+model_two_interaction_one_slope2 <- glm(
+  cbind(k, r) ~ size + log10_duration - 1, 
+             data = prob_two, 
+             family = binomial(mafc.logit(2)))
+
+pre_two_interaction_one_slope <- augment(
+  model_two_interaction_one_slope, 
+               newdata = log10_duration_seq_size_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - .se.fit, 
+         fitted_max = .fitted + .se.fit)
+
+pre_two_interaction_one_slope2 <- augment(
+  model_two_interaction_one_slope2, 
+               newdata = log10_duration_seq_size_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - .se.fit, 
+         fitted_max = .fitted + .se.fit)
+
+ggplot() +
+  geom_point(data = prob_two, 
+             aes(x = log10_duration, y = prob, color = size)) +
+  geom_line(data = pre_two_interaction_one_slope, 
+            aes(x = log10_duration, y = .fitted, color = size)) +
+    geom_line(data = pre_two_interaction_one_slope2, 
+            aes(x = log10_duration, y = .fitted, color = size),
+            lty = 2) 
+```
+
+Las curvas salen lo mismmo con 
+
+size + lo10_duration - 1 y 
+size + lo10_duration 
+
+pero hay cosas que cambian 
+
+#### Comparing same different or same slope para el model con y sin -1
+```{r}
+anova(model_two_interaction, 
+      model_two_interaction_one_slope, test = "Chisq")
+anova(model_two_interaction, 
+      model_two_interaction_one_slope2, test = "Chisq")
+```
+
+El analisis de varianza sale lo mismo 
