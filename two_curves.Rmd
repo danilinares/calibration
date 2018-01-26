@@ -130,7 +130,7 @@ model_two_interaction_one_slope <- glm(
              family = binomial(mafc.logit(2)))
 
 model_two_interaction_one_slope2 <- glm(
-  cbind(k, r) ~ size + log10_duration - 1, 
+  cbind(k, r) ~ size + log10_duration, 
              data = prob_two, 
              family = binomial(mafc.logit(2)))
 

@@ -136,30 +136,14 @@ same_slope <- prob %>%
                 ~glm(cbind(k, r) ~ size + log10_duration - 1, 
                      data = ., 
                      family = binomial(mafc.logit(2)))), 
-    psycho = map(model,
-                 ~tibble(prob = predict(.,
-                                        newdata = log10_duration_seq_size_df, 
-                                        type = "response")) %>% 
-                   bind_cols(log10_duration_seq_size_df))
-  )
-
-same_slope <- prob %>% 
-  group_by(participant, platform) %>% 
-  nest() %>% 
-  mutate(
-    m = "same_slope",
-    model = map(data, 
-                ~glm(cbind(k, r) ~ size + log10_duration - 1, 
-                     data = ., 
-                     family = binomial(mafc.logit(2)))), 
     psycho = map(model, ~as_tibble(
       predict(., newdata = log10_duration_seq_size_df, 
                  type = "response",
                  se.fit = TRUE)) %>% 
         bind_cols(log10_duration_seq_size_df) %>% 
         rename(prob = fit) %>% 
-        mutate(prob_min = prob - 2 * se.fit, 
-        prob_max = prob + 2 * se.fit)
+        mutate(prob_min = prob - 2.58 * se.fit, 
+        prob_max = prob + 2.58 * se.fit) # hay que buscar que numero va aqui (t)
       )
     )
 
@@ -169,16 +153,69 @@ psycho_same_slope <- same_slope %>%
   unnest() %>% 
   mutate(duration = 10^log10_duration)
 
+thresholds_same_slope <- same_slope %>% 
+  mutate(estimate = map(model, tidy),
+         estimate = map(estimate, ~pull(., estimate)),
+         sizeLarge = map_dbl(estimate, 1),
+         sizeSmall = map_dbl(estimate, 2),
+         log10_duration = map_dbl(estimate, 3),
+         estimatemin = map(model, ~confint(., level = .99)[,1]),
+         estimatemax = map(model, ~confint(., level = .99)[,2]),
+         sizeLargemin = map_dbl(estimatemin, 1),
+         sizeSmallmin = map_dbl(estimatemin, 2),
+         log10_durationmin = map_dbl(estimatemin, 3),
+         sizeLargemax = map_dbl(estimatemax, 1),
+         sizeSmallmax = map_dbl(estimatemax, 2),
+         log10_durationmax = map_dbl(estimatemax, 3)) %>% 
+  dplyr::select(participant, platform, 
+                sizeLarge, sizeSmall, log10_duration,
+                sizeLargemin, sizeSmallmin, log10_durationmin, 
+                sizeLargemax, sizeSmallmax, log10_durationmax) %>% 
+  mutate(Large = - sizeLarge / log10_duration, 
+         Small = - sizeSmall / log10_duration,
+         Largemin = - sizeLargemin / log10_durationmin,
+         Smallmin = - sizeSmallmin / log10_durationmin,
+         Largemax = - sizeLargemax / log10_durationmax,
+         Smallmax = - sizeSmallmax / log10_durationmax) %>% 
+  dplyr::select(participant, platform, Large, Small, 
+                Largemin, Smallmin, Largemax, Smallmax)
+
+thresholds_same_slope_large <- thresholds_same_slope %>% 
+  dplyr::select(participant, platform, Large, Largemin, Largemax) %>% 
+  rename(threshold = Large, thresholdmin = Largemin, thresholdmax = Largemax) %>%
+  mutate(size = "Large")
+
+thresholds_same_slope_small <- thresholds_same_slope %>% 
+  dplyr::select(participant, platform, Small, Smallmin, Smallmax) %>% 
+  rename(threshold = Small, thresholdmin = Smallmin, thresholdmax = Smallmax) %>% 
+  mutate(size = "Small")
+
+thresholds_same_slope_all <- thresholds_same_slope_large %>% 
+  bind_rows(thresholds_same_slope_small) %>% 
+  mutate(threshold = 10^threshold, 
+         thresholdmin = 10^thresholdmin, 
+         thresholdmax = 10^thresholdmax, 
+         prob = .75)
+
+
 p_size_same_slope <- ggplot(prob,
                            aes(x = duration, y = prob, 
                                color = size, shape = size)) +
-  facet_grid(platform~ participant) +
-  geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
+  facet_grid(platform~ participant, scales = "free") +
+  #geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
   geom_ribbon(data = psycho_same_slope, 
               aes(x = duration,
                   ymin = prob_min, ymax = prob_max, 
                   fill = size), colour = NA, alpha = alpha_fill_level) +
   geom_point(size = size_point) +
+  geom_segment(data = thresholds_same_slope_all,
+               aes(x = threshold, xend = threshold,
+                   y = -Inf, yend = prob, color = size),
+               size = size_line * .5) +
+  geom_segment(data = thresholds_same_slope_all, 
+               aes(x = thresholdmax, xend = thresholdmin, 
+                   y = prob, yend = prob, color = size),
+               size = size_line * .5) +
   geom_line(data = psycho_same_slope, size = size_line) +
   scale_color_brewer(labels = name_size, palette = "Set1") +
   scale_fill_brewer(labels = name_size, palette = "Set1") +
@@ -205,6 +242,13 @@ dif_slope %>%
 
 
 
+
+
+
+
+
+
+#### porqueria
 
 
 

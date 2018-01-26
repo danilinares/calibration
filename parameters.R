@@ -14,6 +14,7 @@ two_columns_width <- 7.2
 
 size_point <- .8
 size_line <- .25
+alpha_fill_level <- .25
 
 label_duration <- "Duration (s)"
 label_proportion <- "Probability correct"
