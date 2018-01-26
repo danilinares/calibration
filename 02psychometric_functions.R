@@ -208,6 +208,8 @@ p_size_same_slope <- ggplot(prob,
                   ymin = prob_min, ymax = prob_max, 
                   fill = size), colour = NA, alpha = alpha_fill_level) +
   geom_point(size = size_point) +
+  geom_linerange(aes(ymin = ymin, ymax = ymax), 
+                 size = size_line * .5) +
   geom_segment(data = thresholds_same_slope_all,
                aes(x = threshold, xend = threshold,
                    y = -Inf, yend = prob, color = size),
@@ -239,6 +241,75 @@ dif_slope %>%
          p.value = map_dbl(anov, ~.$`Pr(>Chi)`[2])) %>% # usar broom 
   select(participant, platform, p.value, everything()) %>% 
   filter(p.value < .01)
+
+# Correlation plots ------------------------------------------------------------
+
+thresholds_same_slope_all_size <- thresholds_same_slope_all %>% 
+  dplyr::select(-thresholdmin, -thresholdmax) %>% 
+  spread(platform, threshold)  
+
+cor_size <- thresholds_same_slope_all_size %>% 
+  group_by(size) %>% 
+  summarise(cor = list(cor.test(CRT, iPad) %>% tidy())) %>% 
+  unnest()
+
+# pero la correlacion no es la medida buena porque va a dependender de la
+# varibilidad de los observadores, si todos hacen lo mismo no va bien 
+
+
+p_correlation_size <- ggplot(thresholds_same_slope_all_size, 
+                             aes(x = CRT, y = iPad, color = size, 
+                                 shape = factor(size))) +
+  geom_abline(color = "grey", size = size_line) +
+  geom_point(size = size_point) +
+  geom_smooth(method = "lm", se = FALSE, size = size_line) +
+  scale_color_brewer(labels = name_size, palette = "Set1") +
+  scale_shape_discrete(labels = name_size) +
+  coord_equal() +
+  scale_x_log10(breaks = c(.01, .04, .16), 
+                labels = c(".01", ".04", ".16"), 
+                limits = c(.008,.3)) +
+  scale_y_log10(breaks = c(.01, .04, .16), 
+                labels = c(".01", ".04", ".16"),
+                limits = c(.008,.3)) +
+  labs(x = label_crt, y = label_ipad, 
+       color = label_size, shape = label_size) +
+  theme(legend.text = element_text(size = 9))
+
+
+thresholds_same_slope_all_platform <- thresholds_same_slope_all %>% 
+  dplyr::select(-thresholdmin, -thresholdmax) %>% 
+  spread(size, threshold)  
+
+cor_platform <- thresholds_same_slope_all_platform %>% 
+  group_by(platform) %>% 
+  summarise(cor = list(cor.test(Small, Large) %>% tidy())) %>% 
+  unnest()
+
+p_correlation_platform <- ggplot(thresholds_same_slope_all_platform, 
+                                 aes(x = Small, y = Large, color = factor(platform), 
+                                     shape = factor(platform))) +
+  geom_abline(color = "grey", size = size_line) +
+  geom_point(size = size_point) +
+  geom_smooth(method = "lm", se = FALSE, size = size_line) +
+  scale_color_brewer(palette = "Dark2") +
+  # scale_shape_discrete(labels = name_platform) +
+  coord_equal() +
+  scale_x_log10(breaks = c(.01, .04, .16), 
+                labels = c(".01", ".04", ".16"), 
+                limits = c(.008,.3)) +
+  scale_y_log10(breaks = c(.01, .04, .16), 
+                labels = c(".01", ".04", ".16"),
+                limits = c(.008,.3)) +
+  labs(x = label_small, y = label_large, 
+       color = label_platform, shape = label_platform) +
+  theme(legend.text = element_text(size = 9))
+
+p_cor <- plot_grid(p_correlation_size, 
+                   p_correlation_platform, 
+                   ncol = 1)
+
+ggsave("figures/cor.pdf", p_cor, width = single_column_width, height = 3.5) 
 
 
 
@@ -660,59 +731,6 @@ ggsave("figures/pro_size_dif_slope.pdf", p_pro_size_dif_slope,
        width = two_columns_width, height = 2.5) 
 
 
-
-# Correlation plots ------------------------------------------------------------
-
-thresholds_long_size <- fit$thresholds %>% spread(platform, thre)  
-
-p_correlation_size <- ggplot(thresholds_long_size, 
-                      aes(x = CRT, y = iPad, color = factor(size), 
-                          shape = factor(size))) +
-  geom_abline(color = "grey", size = size_line) +
-  geom_point(size = size_point) +
-  geom_smooth(method = "lm", se = FALSE, size = size_line) +
-  scale_color_brewer(labels = name_size, palette = "Set1") +
-  scale_shape_discrete(labels = name_size) +
-  coord_equal() +
-  scale_x_log10(breaks = c(.01, .04, .16), 
-                labels = c(".01", ".04", ".16"), 
-                limits = c(.008,.3)) +
-  scale_y_log10(breaks = c(.01, .04, .16), 
-                labels = c(".01", ".04", ".16"),
-                limits = c(.008,.3)) +
-  labs(x = label_crt, y = label_ipad, 
-       color = label_size, shape = label_size) +
-  theme(legend.text = element_text(size = 9))
-p_correlation_size
-
-
-thresholds_long_platform <- fit$thresholds %>% spread(size, thre) 
-
-p_correlation_platform <- ggplot(thresholds_long_platform, 
-                             aes(x = `1`, y = `4`, color = factor(platform), 
-                                 shape = factor(platform))) +
-  geom_abline(color = "grey", size = size_line) +
-  geom_point(size = size_point) +
-  geom_smooth(method = "lm", se = FALSE, size = size_line) +
-   scale_color_brewer(palette = "Dark2") +
-  # scale_shape_discrete(labels = name_platform) +
-  coord_equal() +
-  scale_x_log10(breaks = c(.01, .04, .16), 
-                labels = c(".01", ".04", ".16"), 
-                limits = c(.008,.3)) +
-  scale_y_log10(breaks = c(.01, .04, .16), 
-                labels = c(".01", ".04", ".16"),
-                limits = c(.008,.3)) +
-   labs(x = label_small, y = label_large, 
-        color = label_platform, shape = label_platform) +
-  theme(legend.text = element_text(size = 9))
-
-p_cor <- plot_grid(p_correlation_size, 
-                   p_correlation_platform, 
-                      ncol = 1, 
-                      labels = c("A", "B"))
-
-ggsave("figures/cor.pdf", p_cor, width = single_column_width, height = 3.5) 
 
 
 
