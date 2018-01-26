@@ -1,3 +1,7 @@
+log_duration_min <- log10(0.005)
+log_duration_max <- log10(0.25)
+
+
 theme_set(theme_classic(base_size = 8) +
             theme(axis.line = element_line(size = size_line), 
                   axis.ticks = element_line(size = size_line), 

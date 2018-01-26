@@ -438,6 +438,32 @@ ggplot() +
 <h4>Comparing same different or same slope para el model con y sin -1</h4>
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYW5vdmEobW9kZWxfdHdvX2ludGVyYWN0aW9uLCBcbiAgICAgIG1vZGVsX3R3b19pbnRlcmFjdGlvbl9vbmVfc2xvcGUsIHRlc3QgPSBcIkNoaXNxXCIpXG5gYGAifQ== -->
+<pre class="r"><code>anova(model_two_interaction, 
+      model_two_interaction_one_slope, test = &quot;Chisq&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiQW5hbHlzaXMgb2YgRGV2aWFuY2UgVGFibGVcblxuTW9kZWwgMTogY2JpbmQoaywgcikgfiBzaXplL2xvZzEwX2R1cmF0aW9uIC0gMVxuTW9kZWwgMjogY2JpbmQoaywgcikgfiBzaXplICsgbG9nMTBfZHVyYXRpb24gLSAxXG4gIFJlc2lkLiBEZiBSZXNpZC4gRGV2IERmIERldmlhbmNlIFByKD5DaGkpXG4xICAgICAgICAxMCAgICAgMjguMjIzICAgICAgICAgICAgICAgICAgICAgXG4yICAgICAgICAxMSAgICAgMjkuMjg0IC0xICAtMS4wNjA2ICAgMC4zMDMxXG4ifQ== -->
+<pre><code>Analysis of Deviance Table
+
+Model 1: cbind(k, r) ~ size/log10_duration - 1
+Model 2: cbind(k, r) ~ size + log10_duration - 1
+  Resid. Df Resid. Dev Df Deviance Pr(&gt;Chi)
+1        10     28.223                     
+2        11     29.284 -1  -1.0606   0.3031</code></pre>
+<!-- rnb-output-end -->
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxuYW5vdmEobW9kZWxfdHdvX2ludGVyYWN0aW9uLCBcbiAgICAgIG1vZGVsX3R3b19pbnRlcmFjdGlvbl9vbmVfc2xvcGUyLCB0ZXN0ID0gXCJDaGlzcVwiKVxuYGBgIn0= -->
+<pre class="r"><code>anova(model_two_interaction, 
+      model_two_interaction_one_slope2, test = &quot;Chisq&quot;)</code></pre>
+<!-- rnb-source-end -->
+<!-- rnb-output-begin eyJkYXRhIjoiQW5hbHlzaXMgb2YgRGV2aWFuY2UgVGFibGVcblxuTW9kZWwgMTogY2JpbmQoaywgcikgfiBzaXplL2xvZzEwX2R1cmF0aW9uIC0gMVxuTW9kZWwgMjogY2JpbmQoaywgcikgfiBzaXplICsgbG9nMTBfZHVyYXRpb24gLSAxXG4gIFJlc2lkLiBEZiBSZXNpZC4gRGV2IERmIERldmlhbmNlIFByKD5DaGkpXG4xICAgICAgICAxMCAgICAgMjguMjIzICAgICAgICAgICAgICAgICAgICAgXG4yICAgICAgICAxMSAgICAgMjkuMjg0IC0xICAtMS4wNjA2ICAgMC4zMDMxXG4ifQ== -->
+<pre><code>Analysis of Deviance Table
+
+Model 1: cbind(k, r) ~ size/log10_duration - 1
+Model 2: cbind(k, r) ~ size + log10_duration - 1
+  Resid. Df Resid. Dev Df Deviance Pr(&gt;Chi)
+1        10     28.223                     
+2        11     29.284 -1  -1.0606   0.3031</code></pre>
+<!-- rnb-output-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <p>El analisis de varianza sale lo mismo</p>

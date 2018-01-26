@@ -39,7 +39,6 @@ pre <- augment(model_one,
   mutate(fitted_min = .fitted - .se.fit, 
          fitted_max = .fitted + .se.fit)
 
-
 p <- ggplot() +
   geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
   geom_ribbon(data = pre, aes(x = log10_duration,
