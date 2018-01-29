@@ -12,7 +12,7 @@ theme_set(theme_classic(base_size = 8) +
 single_column_width <- 3.5
 two_columns_width <- 7.2
 
-size_point <- .8
+size_point <- .7
 size_line <- .25
 alpha_fill_level <- .25
 
