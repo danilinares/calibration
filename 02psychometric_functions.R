@@ -12,8 +12,8 @@ source("parameters.R")
 load("logdata/dat_resp.RData")
 
 # probabilities ----------------------------------------------------------------
-prob <- calculate_proportions(dat_resp, correct, duration,
-                              platform, size, participant) %>% 
+prob <- calculate_proportions(dat_resp, correct, duration, 
+                              platform, size, participant)%>% 
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
   ungroup()
 
@@ -33,7 +33,7 @@ dif_slope <- prob %>%
   mutate(
     m = "dif_slope",
     model = map(data, 
-                ~glm(cbind(k, r) ~ size / log10_duration, 
+                ~glm(cbind(k, r) ~ size / log10_duration - 1, 
                      data = ., 
                      family = binomial(mafc.logit(2)))), 
     psycho = map(model,
@@ -224,7 +224,8 @@ p_size_same_slope <- ggplot(prob,
   scale_fill_brewer(labels = name_size, palette = "Set1") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25), limits = c(0,1)) +
+  scale_y_continuous(breaks = seq(0, 1,.25)) +
+  coord_cartesian(ylim = c(0, 1)) +
   labs(x = label_duration, y = label_proportion, 
        color = label_size, shape = label_size, fill = label_size) +
   theme(legend.position = "top", 
@@ -241,7 +242,7 @@ dif_slope %>%
   mutate(anov = map2(dif_slope, same_slope, anova, test = "Chisq"), 
          p.value = map_dbl(anov, ~.$`Pr(>Chi)`[2])) %>% # usar broom 
   select(participant, platform, p.value, everything()) %>% 
-  filter(p.value < .01)
+  filter(p.value < .05)
 
 # Correlation plots ------------------------------------------------------------
 

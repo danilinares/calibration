@@ -1,4 +1,5 @@
 library(tidyverse)
+library(stringr)
 library(quickpsy)
 
 dat_resp_ipad <- quickreadfiles(path = "data", 

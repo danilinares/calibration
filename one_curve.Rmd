@@ -28,7 +28,7 @@ prob_one <- calculate_proportions(dat_resp_one, correct, duration) %>%
 
 model_one <- glm(cbind(k, r) ~ log10_duration, 
              data = prob_one, 
-             family = binomial(mafc.logit(2)))
+             family = binomial(mafc.probit(2)))
 
 log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
                                                      log10(.25), 
@@ -36,14 +36,14 @@ log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005),
 pre <- augment(model_one, 
                newdata = log10_duration_seq_df,
                type.predict = "response") %>% 
-  mutate(fitted_min = .fitted - .se.fit, 
-         fitted_max = .fitted + .se.fit)
+  mutate(fitted_min = .fitted - 2.575829 * .se.fit, 
+         fitted_max = .fitted + 2.575829  * .se.fit)
 
 p <- ggplot() +
-  geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
-  geom_ribbon(data = pre, aes(x = log10_duration,
+    geom_ribbon(data = pre, aes(x = log10_duration,
                               ymin = fitted_min, ymax = fitted_max), 
               fill = "grey") +
+  geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
   geom_line(data = pre, aes(x = log10_duration, y = .fitted)) 
 p
 ```
@@ -124,6 +124,16 @@ I don't understand well which is the statistics for which $se$ is calculated.
 
 Given that in some guidelines it is said that you should report confidence intervals instead of standard error, I guess we will need to use the t-statistics to multiply the standard error when we fix alpha to .05 or 0.01
     
+### Obtaining ci with quickpsy
+
+```{r}
+library(quickpsy)
+
+fit_quick <- quickpsy(prob_one, log10_duration, k, n, guess = .5,
+                      bootstrap = "nonparametric",
+                      B = 1000)
+plot(fit_quick)
+```
 
 ### Obtaining the the threshold
 
@@ -134,11 +144,30 @@ coefi <- model_one %>% tidy() %>% pull(estimate)
 sigma <- 1 / coefi[2]
 mu <- -coefi[1] / coefi[2]
 
-p <- p +
-  geom_segment(data = tibble(mu, prob = .75), aes(x = log10(0.005), xend = mu, 
-                                                  y = 0.75, yend = .75)) +
-  geom_segment(data = tibble(mu, prob = .75), aes(x = mu, xend = mu, 
-                                                  y = 0, yend = .75))
+coeff <- model_one %>% confint(level = .99)
+
+ci_beta_0 <- coeff[1,]
+ci_beta_1 <- coeff[2,]
+
+sigma_min_max <- 1/ ci_beta_1
+
+mu_min_max <- -ci_beta_0 / ci_beta_1
+
+mu_min_max_df <- tibble(xmin = mu_min_max[1], xmax = mu_min_max[2], prob = .75)
+
+p <- ggplot() +
+    geom_ribbon(data = pre, aes(x = log10_duration,
+                              ymin = fitted_min, ymax = fitted_max),
+              fill = "grey") +
+  geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
+  geom_line(data = pre, aes(x = log10_duration, y = .fitted)) +
+   geom_segment(data = tibble(mu, prob = .75), aes(x = mu, xend = mu,
+                                                   y = 0, yend = .75)) +
+    geom_segment(data = mu_min_max_df, aes(x = xmin , xend = xmax, 
+                                                  y = prob, yend = prob)) +
+      geom_segment(data = fit_quick$thresholds, aes(x = threinf , xend = thresup, 
+                                                  y = prob + .01, yend = prob +.01,
+                                                  color  = "quickpsy")) 
 p
 ```
 
@@ -160,9 +189,16 @@ model_one %>% anova(test = "Chisq")
 
 Yes, adding log10_duration is statistically highly  significant
 
+### Comparing to the null model manually
 ```{r}
-model_one %>% summary()
+model_one_null <- glm(cbind(k, r) ~ 1, 
+             data = prob_one, 
+             family = binomial(mafc.probit(2)))
+
+anova(model_one, model_one_null, test = "Chisq")
 ```
+
+No salen exactamente los mismos numeros pero muy parecidos. 
 
 ### DUDA
 

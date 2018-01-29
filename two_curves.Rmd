@@ -169,8 +169,9 @@ pero hay cosas que cambian
 ```{r}
 anova(model_two_interaction, 
       model_two_interaction_one_slope, test = "Chisq")
+```
+```{r}
 anova(model_two_interaction, 
       model_two_interaction_one_slope2, test = "Chisq")
 ```
-
 El analisis de varianza sale lo mismo 
