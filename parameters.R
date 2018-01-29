@@ -2,12 +2,7 @@ log_duration_min <- log10(0.005)
 log_duration_max <- log10(0.25)
 
 
-theme_set(theme_classic(base_size = 8) +
-            theme(axis.line = element_line(size = size_line), 
-                  axis.ticks = element_line(size = size_line), 
-                  strip.background = element_rect(colour = "black", 
-                                                  fill = "lightgrey",
-                                                  linetype = 0)))
+
 
 single_column_width <- 3.5
 two_columns_width <- 7.2
@@ -36,3 +31,10 @@ small_stimulus_size <- 28
 
 
 name_cond <- c("e" = "enceph", "c" = "control", "s" = "scz")
+
+theme_set(theme_classic(base_size = 8) +
+            theme(axis.line = element_line(size = size_line), 
+                  axis.ticks = element_line(size = size_line), 
+                  strip.background = element_rect(colour = "black", 
+                                                  fill = "lightgrey",
+                                                  linetype = 0)))

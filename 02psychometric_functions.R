@@ -4,6 +4,7 @@ library(cowplot)
 library(modelfree)
 library(psyphy)
 library(modelr)
+library(rlang)
 
 list.files("R", full.names = TRUE) %>% walk(source)
 source("parameters.R")
