@@ -81,7 +81,7 @@ load("logdata/dat_resp.RData")
 Los ci están calculados con z pero no si deben estar calculadoso con t. 
 ```{r}
 dat_resp_one <- dat_resp %>% 
-  filter(participant =="01",  platform == "CRT", size == "Small")
+  filter(participant =="02",  platform == "CRT", size == "Small")
 
 prob_one <- calculate_proportions(dat_resp_one, correct, duration) %>% 
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
@@ -89,7 +89,7 @@ prob_one <- calculate_proportions(dat_resp_one, correct, duration) %>%
 
 model_one <- glm(cbind(k, r) ~ log10_duration, 
              data = prob_one, 
-             family = binomial(mafc.probit(2)))
+             family = binomial(mafc.logit(2)))
 
 log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
                                                      log10(.25), 
@@ -114,7 +114,14 @@ ggplot() +
 ```{r message=FALSE}
 library(quickpsy)
 fit_quick <- quickpsy(prob_one, log10_duration, k, n, guess = .5, B = 300)
-fit_quick %>% plot()
+ggplot()+
+  geom_point(data =fit_quick$avbootstrap, alpha = .2, 
+             aes(x = log10_duration, y = prob, grup = factor(sample)))+
+  geom_line(data = fit_quick$curvesbootstrap, alpha = .2, 
+            aes(x = x, y =y, group = factor(sample))) +
+    geom_point(data =fit_quick$averages, 
+             aes(x = log10_duration, y = prob), color = "red")+
+  geom_line(data = fit_quick$curves, aes(x = x, y =y), color = "red")
 ```
 
 ### Obtaining the the threshold using `glm` 
@@ -125,7 +132,8 @@ coefi <- model_one %>% tidy() %>% pull(estimate)
 sigma <- 1 / coefi[2]
 mu <- -coefi[1] / coefi[2]
 
-coeff <- model_one %>% confint(level = .95)
+coeff <- model_one %>% confint.default(level = .95)
+
 
 ci_beta_0 <- coeff[1,]
 ci_beta_1 <- coeff[2,]
