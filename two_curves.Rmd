@@ -17,10 +17,10 @@ load("logdata/dat_resp.RData")
 
 ```
 
-### Select two conditions, predict and plot with confidence intervals
+## Select two conditions, predict and plot with confidence intervals
 ```{r}
 dat_resp_two <- dat_resp %>% 
-  filter(participant =="04",  platform == "CRT")
+  filter(participant =="13",  platform == "iPad")
 
 prob_two <- calculate_proportions(dat_resp_two, correct, 
                                   duration, size) %>% 
@@ -37,7 +37,7 @@ model_two_interaction <- glm(cbind(k, r) ~ size / log10_duration - 1,
 
 log10_duration_seq_size_df <- prob_two %>% distinct(size) %>% 
   crossing(tibble(log10_duration = seq(log10(0.005), 
-                                       log10(.25), 
+                                       log10(.4), 
                                        length.out = 100)))
 
 pre_two_interaction <- augment(model_two_interaction, 
@@ -53,7 +53,7 @@ ggplot() +
             aes(x = log10_duration, y = .fitted, color = size)) 
 ```
 
-### Doing it for each curve individually
+## Doing it for each curve individually
 ```{r}
 model_two_interaction_individually <- prob_two %>% 
   group_by(size) %>% 
@@ -83,17 +83,17 @@ model_two_interaction_individually %>%
 Augment sale lo mismo para las predicciones y los standard error pero no para todos los valores 
 ```{r}
 model_two_interaction %>% augment() %>% 
-  select(-1) %>% #elimino 1a col porque es una matriz y es un rollo  
+  dplyr::select(-1) %>% #elimino 1a col porque es una matriz y es un rollo  
   arrange(size)
 
 model_two_interaction_individually %>% 
   mutate(augment = map(model, augment), 
-         augment = map(augment, select, -1)) %>% 
-  select(-data, -model) %>% 
+         augment = map(augment, dplyr::select, -1)) %>% 
+  dplyr::select(-data, -model) %>% 
   unnest()
 ```
 
-### fitting all data with a single psychometric function
+## fitting all data with a single psychometric function
 ```{r}
 model_one <- glm(cbind(k, r) ~ log10_duration , 
              data = prob_two, 
@@ -115,13 +115,13 @@ ggplot() +
             aes(x = log10_duration, y = .fitted))
 ```
 
-#### Comparing the one psychometric function vs two psychometric functions
+### Comparing the one psychometric function vs two psychometric functions
 ```{r}
 anova(model_two_interaction, model_one, test = "Chisq")
 ```
 The model with two psychometric functions significantly improves
 
-### Plotting the same slope 
+## Plotting the same slope 
 
 ```{r}
 model_two_interaction_one_slope <- glm(
@@ -165,7 +165,7 @@ size + lo10_duration
 
 pero hay cosas que cambian 
 
-#### Comparing same different or same slope para el model con y sin -1
+## Comparing same different or same slope para el model con y sin -1
 ```{r}
 anova(model_two_interaction, 
       model_two_interaction_one_slope, test = "Chisq")
@@ -175,3 +175,65 @@ anova(model_two_interaction,
       model_two_interaction_one_slope2, test = "Chisq")
 ```
 El analisis de varianza sale lo mismo 
+
+## Bootstrap
+```{r}
+
+model_two_interaction_one_slope2 <- glm(
+  cbind(k, r) ~ size + log10_duration, 
+             data = prob_two, 
+             family = binomial(mafc.logit(2)))
+
+pre_two_interaction_one_slope <- augment(
+  model_two_interaction_one_slope, 
+               newdata = log10_duration_seq_size_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - .se.fit, 
+         fitted_max = .fitted + .se.fit)
+
+
+fit_psy <- function(prob) {
+  model <- glm(cbind(k, r) ~ size + log10_duration - 1, data = prob, 
+               family = binomial(mafc.logit(2)))
+  
+  augment(model, 
+           newdata = log10_duration_seq_size_df,
+          type.predict = "response")
+  
+}
+
+fit <- fit_psy(prob_two) %>% 
+  dplyr::select(size, log10_duration, .fitted)
+
+boot_samples <- tibble(sample = 1:120, 
+                       n = prob_two %>% distinct(n) %>% pull(),
+                       prob = list(fit)) %>% 
+  unnest() %>%
+  rowwise() %>% 
+  mutate(k = rbinom(1, size = n, prob = .fitted), 
+         r = n -k, 
+         prob = k /n)
+
+fit_boot <- boot_samples %>% 
+  group_by(sample) %>% 
+  nest() %>% 
+  mutate(pre = map(data, fit_psy)) %>% 
+  dplyr::select(-data) %>% 
+  unnest()
+  
+                      
+ggplot() +#facet_wrap(~sample) +
+
+    # geom_point(data = boot_samples, 
+    #          aes(x = log10_duration, y = prob, color = size, 
+    #               group = interaction(size, factor(sample)))) +
+  # geom_line(data = fit, 
+  #           aes(x = log10_duration, y = .fitted, color = size)) +
+    geom_line(data = fit_boot, alpha = .1,
+            aes(x = log10_duration, y = .fitted, color = size, 
+                group = interaction(size, factor(sample)))) +
+     geom_point(data = prob_two, 
+              aes(x = log10_duration, y = prob)) 
+```
+
+
