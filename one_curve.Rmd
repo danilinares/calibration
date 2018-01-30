@@ -2,86 +2,26 @@
 title: "One psychometric curve"
 output: html_notebook
 ---
-
-```{r}
-library(tidyverse)
-library(quickpsy)
-library(broom)
-library(cowplot)
-library(modelfree)
-library(psyphy)
-library(modelr)
-
-list.files("R", full.names = TRUE) %>% walk(source)
-load("logdata/dat_resp.RData")
-
-```
-
-### Select one condition, predict and plot with confidence intervals
-```{r}
-dat_resp_one <- dat_resp %>% 
-  filter(participant =="01",  platform == "CRT", size == "Small")
-
-prob_one <- calculate_proportions(dat_resp_one, correct, duration) %>% 
-  mutate(r = n - k, log10_duration = log10(duration)) %>% 
-  ungroup()
-
-model_one <- glm(cbind(k, r) ~ log10_duration, 
-             data = prob_one, 
-             family = binomial(mafc.probit(2)))
-
-log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
-                                                     log10(.25), 
-                                                     length.out = 100))
-pre <- augment(model_one, 
-               newdata = log10_duration_seq_df,
-               type.predict = "response") %>% 
-  mutate(fitted_min = .fitted - 2.575829 * .se.fit, 
-         fitted_max = .fitted + 2.575829  * .se.fit)
-
-p <- ggplot() +
-    geom_ribbon(data = pre, aes(x = log10_duration,
-                              ymin = fitted_min, ymax = fitted_max), 
-              fill = "grey") +
-  geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
-  geom_line(data = pre, aes(x = log10_duration, y = .fitted)) 
-p
-```
-
-### Standard error
-As the ribbon in the graph corresponds to the plus minus standard error,  here I revise the theory of standard error with the example in which the statistic is the sample mean
+## Standard error
 
 The standard error $se$ of an statistic (a function of the data) $\widehat{\theta}$ is defined as
 
 $$se = \sqrt{V(\widehat{\theta})}$$
+
 The variance could be calculated because $\widehat{\theta}$ is a random variable.
 
-For the sample mean
+### Standard error for the sample mean if $X$ is distributed normally or $n$ is large (CLM)
+
  
 $$se(\overline{X}_n)=\sqrt{V(\overline{X}_n)} = \frac{\sigma}{\sqrt{n}}$$
 
-where $\sigma^2$ is the variance of one of the random variable $X_i$ that conforms the sample.
-    
-Demonstration
-
-$$V[\overline{X}_n]=V(\frac{1}{n}\sum_i X_i) = \frac{1}{n^2} \sum_i  V(X_i) = \frac{1}{n^2} n \sigma^2 = \frac{\sigma^2}{n}$$
-
-#### Relation with confidence intervals
+### Relation with confidence intervals
 
 A $1 - \alpha$ confidence interval for a parameter $\theta$ is an interval $C_n = (a,b)$ where $a=a(X_1,\dotsc,X_n)$ and $b=b(X_1,\dotsc,X_n)$ are functions of the data such that $P(\theta \in C_n) = 1 - \alpha$.
 
-If $\widehat{\theta_n}$ is normally distributed $N(\mu,se^2)$ with $se^2=\sigma^2/n$, 
-which happens when the sample is large (central limit theorem)
-
-and $\sigma^2$ is known
-
-then
+If $\widehat{\theta_n}$ is distributed $N(\mu, se^2=\sigma^2/n)$ ($\theta$ is normally distributed or CLT) then
 
 $$C_n = (\widehat{\theta_n} - z_{1-\alpha/2} \, se, \widehat{\theta_n} + z_{1-\alpha/2}\, se)$$
-
-Demonstration
-
-$$P \left( \widehat{\theta_n} - z_{1-\alpha/2} \,se < \theta < \widehat{\theta_n} + z_{1-\alpha/2} \,se \right) = P \left( -z_{1-\alpha/2} < \frac{\widehat{\theta_n} - \theta}{se} <  z_{1-\alpha/2} \right)=P\left(- z_{1-\alpha/2} < Z <  z_{1-\alpha/2} \right)=1-\alpha$$
 
 if $\alpha = .05$ then 
 
@@ -103,9 +43,6 @@ where $S^2_n$ is the sample variance
 
 $$S_n^2=\sum_{i=1}^{n}\frac{(X_i-\overline{X}_n)^2}{n-1}$$
 
-Demonstration
-
-$$P \left( \widehat{\theta_n} - t_{1-\alpha/2} \,\widehat{se} < \theta < \widehat{\theta_n} + t_{1-\alpha/2} \,  \widehat{se} \right) = P \left( -t_{1-\alpha/2} < \frac{\widehat{\theta_n} - \theta}{\widehat{se}} <  t_{1-\alpha/2} \right)=P\left( -t_{1-\alpha/2} < T <  t_{1-\alpha/2} \right)=1-\alpha$$
 
 if $\alpha = .05$ and n = 10 then 
 
@@ -119,32 +56,76 @@ If n large, we get the same that for known variance
 qt(1 - .025, 1000 -1)
 ```
 
-#### NUESTRO CASO
-I don't understand well which is the statistics for which $se$ is calculated. 
+### Nuestro caso
 
-Given that in some guidelines it is said that you should report confidence intervals instead of standard error, I guess we will need to use the t-statistics to multiply the standard error when we fix alpha to .05 or 0.01
-    
-### Obtaining ci with quickpsy
+Do we need to use $z$ or $t$. 
 
-```{r}
+
+```{r message=FALSE}
+library(tidyverse)
+library(rlang)
 library(quickpsy)
+library(broom)
+library(cowplot)
+library(modelfree)
+library(psyphy)
+library(modelr)
 
-fit_quick <- quickpsy(prob_one, log10_duration, k, n, guess = .5,
-                      bootstrap = "nonparametric",
-                      B = 1000)
-plot(fit_quick)
+list.files("R", full.names = TRUE) %>% walk(source)
+load("logdata/dat_resp.RData")
+
 ```
 
-### Obtaining the the threshold
+## Select one condition, predict and plot with confidence intervals
 
-Following Knoblauch 
+Los ci están calculados con z pero no si deben estar calculadoso con t. 
+```{r}
+dat_resp_one <- dat_resp %>% 
+  filter(participant =="01",  platform == "CRT", size == "Small")
+
+prob_one <- calculate_proportions(dat_resp_one, correct, duration) %>% 
+  mutate(r = n - k, log10_duration = log10(duration)) %>% 
+  ungroup()
+
+model_one <- glm(cbind(k, r) ~ log10_duration, 
+             data = prob_one, 
+             family = binomial(mafc.probit(2)))
+
+log10_duration_seq_df <- tibble(log10_duration = seq(log10(0.005), 
+                                                     log10(.25), 
+                                                     length.out = 100))
+pre <- augment(model_one, 
+               newdata = log10_duration_seq_df,
+               type.predict = "response") %>% 
+  mutate(fitted_min = .fitted - qnorm(1- .5* .01) * .se.fit, 
+         fitted_max = .fitted + qnorm(1- .5* .01)  * .se.fit)
+
+ggplot() +
+  geom_ribbon(data = pre, aes(x = log10_duration, ymin = fitted_min, 
+                              ymax = fitted_max), fill = "grey") +
+  geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
+  geom_line(data = pre, aes(x = log10_duration, y = .fitted)) 
+```
+
+
+    
+### Obtaining the threshold and ci using quickpsy
+
+```{r message=FALSE}
+library(quickpsy)
+fit_quick <- quickpsy(prob_one, log10_duration, k, n, guess = .5, B = 300)
+fit_quick %>% plot()
+```
+
+### Obtaining the the threshold using `glm` 
+
 ```{r}
 coefi <- model_one %>% tidy() %>% pull(estimate) 
 
 sigma <- 1 / coefi[2]
 mu <- -coefi[1] / coefi[2]
 
-coeff <- model_one %>% confint(level = .99)
+coeff <- model_one %>% confint(level = .95)
 
 ci_beta_0 <- coeff[1,]
 ci_beta_1 <- coeff[2,]
@@ -155,20 +136,21 @@ mu_min_max <- -ci_beta_0 / ci_beta_1
 
 mu_min_max_df <- tibble(xmin = mu_min_max[1], xmax = mu_min_max[2], prob = .75)
 
-p <- ggplot() +
-    geom_ribbon(data = pre, aes(x = log10_duration,
+ggplot() +
+  geom_ribbon(data = pre, aes(x = log10_duration,
                               ymin = fitted_min, ymax = fitted_max),
               fill = "grey") +
   geom_point(data = prob_one, aes(x = log10_duration, y = prob))+
   geom_line(data = pre, aes(x = log10_duration, y = .fitted)) +
-   geom_segment(data = tibble(mu, prob = .75), aes(x = mu, xend = mu,
-                                                   y = 0, yend = .75)) +
-    geom_segment(data = mu_min_max_df, aes(x = xmin , xend = xmax, 
-                                                  y = prob, yend = prob)) +
-      geom_segment(data = fit_quick$thresholds, aes(x = threinf , xend = thresup, 
-                                                  y = prob + .01, yend = prob +.01,
-                                                  color  = "quickpsy")) 
-p
+  geom_segment(data = tibble(mu, prob = .75), aes(x = mu, xend = mu,
+                                                  y = 0, yend = .75, color = "glm")) +
+  geom_segment(data = fit_quick$thresholds, aes(x = thre, xend = thre,
+                                                  y = 0, yend = .75, color = "quickpsy")) +
+  geom_segment(data = mu_min_max_df, aes(x = xmin , xend = xmax, 
+                                         y = prob, yend = prob, color = "glm")) +
+  geom_segment(data = fit_quick$thresholds, aes(x = threinf , xend = thresup, 
+                                                y = prob + .01, yend = prob +.01,
+                                                color  = "quickpsy")) 
 ```
 
 ### Significance of the coeficients
