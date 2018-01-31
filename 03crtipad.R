@@ -109,8 +109,13 @@ thresholds_boot <- calculate_thresholds(model_same_slope_boot)
 conf_int <- thresholds_boot %>% 
   group_by(participant, platform, size) %>% 
   summarise(threshold_min = quantile(threshold, .05 /2),
-            threshold_max = quantile(threshold, 1 - .05 /2)) %>% 
+            threshold_max = quantile(threshold, 1 - .05 /2))
+
+conf_int_size <- conf_int %>% 
   mutate(prob = if_else(size == "Large", .75, .73))
+
+conf_int_platform <- conf_int %>% 
+  mutate(prob = if_else(platform == "CRT", .75, .73))
 
 differences_size <- thresholds_boot %>% 
   dplyr::select(-log_threshold) %>% 
@@ -136,12 +141,13 @@ p_size <- ggplot(prob) +
   facet_grid(platform~ participant, scales = "free") +
   geom_line(data = psychometric_functions, size = .5 * size_line, 
             aes(x = duration,y = .fitted,  color = size)) +
-  geom_segment(data = conf_int, 
+
+  geom_point(aes(x = duration, y = prob, 
+                 color = size, shape = size), size = size_point) +
+  geom_segment(data = conf_int_size, 
                aes(x = threshold_min, xend = threshold_max, 
                    y = prob, yend = prob, color = size),
                size = size_line) +
-  geom_point(aes(x = duration, y = prob, 
-                 color = size, shape = size), size = size_point) +
   geom_text(data = differences_size, aes(label = significant, 
                                     x = .01, y = .9)) +
   scale_color_brewer(labels = name_size, palette = "Set1") +
@@ -161,12 +167,12 @@ p_platform <- ggplot(prob) +
   facet_grid(size ~ participant, scales = "free") +
   geom_line(data = psychometric_functions, size = .5 * size_line, 
             aes(x = duration,y = .fitted,  color = platform)) +
-  geom_segment(data = conf_int, 
+  geom_point(aes(x = duration, y = prob, 
+                 color = platform, shape = platform), size = size_point) +
+  geom_segment(data = conf_int_platform, 
                aes(x = threshold_min, xend = threshold_max, 
                    y = prob, yend = prob, color = platform),
                size = size_line) +
-  geom_point(aes(x = duration, y = prob, 
-                 color = platform, shape = platform), size = size_point) +
   geom_text(data = differences_platform, aes(label = significant, 
                                     x = .01, y = .9)) +
   scale_color_brewer(labels = name_size, palette = "Dark2") +
