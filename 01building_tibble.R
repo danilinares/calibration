@@ -6,7 +6,7 @@ dat_resp_ipad <- quickreadfiles(path = "data",
                                 participant = str_pad(1:13, 2, pad = "0"),
                                 platform = c("iPad"), 
                                 session = c("01", "02")) %>%
-  select(session, platform, participant, Duration, Size, Direction,
+  dplyr::select(session, platform, participant, Duration, Size, Direction,
          Correct, Contrast) %>% 
   rename(duration = Duration, size = Size, contrast = Contrast, 
          direction = Direction, correct = Correct)
@@ -15,7 +15,7 @@ dat_resp_crt <- quickreadfiles(path = "data",
                                participant =str_pad(1:13, 2, pad = "0"),
                                platform = c("CRT"), 
                                session = c("01", "02")) %>%
-  select(session, platform, participant, duration, size, direction,
+  dplyr::select(session, platform, participant, duration, size, direction,
          correct, contrast) %>% 
   mutate(size = if_else(size == 90, 4, 1))
 
