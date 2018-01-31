@@ -15,7 +15,6 @@ prob <- calculate_proportions(dat_resp, correct, duration,
   mutate(r = n - k, log10_duration = log10(duration)) %>% 
   ungroup()
 
-
 # models ------------ ----------------------------------------------------------
 models <- prob %>% 
   group_by(participant, platform) %>% 
@@ -63,7 +62,6 @@ psychometric_functions <- model_same_slope %>%
 # thresholds -------------------------------------------------------------------
 calculate_thresholds <- function(df) {
   df %>% 
-    group_by(participant, platform) %>% 
     mutate(thresholds = map(same_slope, 
                             . %>% tidy() %>% 
                               dplyr::select(term, estimate) %>% 
@@ -81,133 +79,110 @@ calculate_thresholds <- function(df) {
 thresholds <- calculate_thresholds(model_same_slope)
 
 # thresholds: bootstrap confidence intervals -----------------------------------
-prob_samples <- prob %>% 
+predictions_n <- prob %>% 
   group_by(participant, platform) %>% 
   summarise(n = first(n)) %>% 
-  left_join(predictions) %>% 
-  group_by(participant, platform) %>% 
-  nest()
+  left_join(predictions) 
 
+prob_samples <- tibble(sample = 1:100, prob = list(predictions_n)) %>% 
+  unnest() %>% 
+  group_by(participant, platform, sample) %>% 
   nest() %>% 
-  mutate(data_boot = map(data, 
-                         
-                         
-                         
-                         
-                         tibble(sample = 1:10, 
-                                n = . %>% distinct(n) %>% pull(),
-                                prob = list(fit)) %>% 
-                           unnest() %>%
-                           rowwise() %>% 
-                           mutate(k = rbinom(1, size = n, prob = .fitted), 
-                                  r = n -k, 
-                                  prob = k /n)
+  mutate(data = map(data, . %>% 
+                      rowwise() %>% 
+                      mutate(k = rbinom(1, size = n, prob = .fitted), 
+                             r = n -k, 
+                             prob = k /n)))
+
+model_same_slope_boot <- prob_samples %>% 
+  group_by(participant, platform, sample) %>% 
+  mutate(
+    same_slope = map(data, 
+                     ~glm(cbind(k, r) ~ size + log10_duration - 1, 
+                          data = ., family = binomial(mafc.logit(2))))
   )
-          )
-  
-  
 
-fit_boot <- boot_samples %>% 
-  group_by(sample) %>% 
-  nest() %>% 
-  mutate(pre = map(data, fit_psy)) %>% 
-  dplyr::select(-data) %>% 
-  unnest()
+thresholds_boot <- calculate_thresholds(model_same_slope_boot)
 
+
+# confidence intervals 
+conf_int <- thresholds_boot %>% 
+  group_by(participant, platform, size) %>% 
+  summarise(threshold_min = quantile(threshold, .05 /2),
+            threshold_max = quantile(threshold, 1 - .05 /2)) %>% 
+  mutate(prob = if_else(size == "Large", .75, .73))
+
+differences_size <- thresholds_boot %>% 
+  dplyr::select(-log_threshold) %>% 
+  spread(size, threshold) %>% 
+  mutate(dif = Large - Small) %>% 
+  group_by(participant, platform) %>% 
+  summarise(dif_min = quantile(dif, .05 /2), 
+            dif_max = quantile(dif, 1 - .05 /2), 
+            significant = if_else(dif_min * dif_max > 0, "*",""))
+
+differences_platform <- thresholds_boot %>% 
+  dplyr::select(-log_threshold) %>% 
+  spread(platform, threshold) %>% 
+  mutate(dif = CRT - iPad) %>% 
+  group_by(participant, size) %>% 
+  summarise(dif_min = quantile(dif, .05 /2), 
+            dif_max = quantile(dif, 1 - .05 /2), 
+            significant = if_else(dif_min * dif_max > 0, "*",""))
+  
+                      
 # plot psychometric functions -------------------------------------------------- 
-
-p_size <- ggplot(prob, aes(x = duration, y = prob, 
-                                color = size, shape = size)) +
+p_size <- ggplot(prob) +
   facet_grid(platform~ participant, scales = "free") +
-  geom_line(data = psychometric_functions, size = size_line, 
-            aes(y = .fitted)) +
-  geom_segment(data = thresholds,
-               aes(x = threshold, xend = threshold,
-                   y = -Inf, yend = .75, color = size),
-               size = size_line * .5) +
-  geom_point(size = size_point) +
+  geom_line(data = psychometric_functions, size = .5 * size_line, 
+            aes(x = duration,y = .fitted,  color = size)) +
+  geom_segment(data = conf_int, 
+               aes(x = threshold_min, xend = threshold_max, 
+                   y = prob, yend = prob, color = size),
+               size = size_line) +
+  geom_point(aes(x = duration, y = prob, 
+                 color = size, shape = size), size = size_point) +
+  geom_text(data = differences_size, aes(label = significant, 
+                                    x = .01, y = .9)) +
   scale_color_brewer(labels = name_size, palette = "Set1") +
   scale_fill_brewer(labels = name_size, palette = "Set1") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
   scale_y_continuous(breaks = seq(0, 1,.25)) +
-  coord_cartesian(ylim = c(0, 1)) +
+  coord_cartesian(ylim = c(0, 1), xlim = c(0.005, .3)) +
   labs(x = label_duration, y = label_proportion,
        color = label_size, shape = label_size, fill = label_size) +
   theme(legend.position = "top",
         legend.text = element_text(size = 9))
 
-
 ggsave("figures/size.pdf", p_size, width = two_columns_width, height = 2.5) 
-  
 
-
-  #geom_hline(color = "grey",  yintercept = 0.5, size = size_line) +
-  geom_ribbon(data = psycho_same_slope, 
-              aes(x = duration,
-                  ymin = prob_min, ymax = prob_max, 
-                  fill = size), colour = NA, alpha = alpha_fill_level) +
-
-  geom_linerange(aes(ymin = ymin, ymax = ymax), 
-                 size = size_line * .5) +
-  geom_segment(data = thresholds_same_slope_all,
-               aes(x = threshold, xend = threshold,
-                   y = -Inf, yend = prob, color = size),
-               size = size_line * .5) +
-  geom_segment(data = thresholds_same_slope_all, 
-               aes(x = thresholdmax, xend = thresholdmin, 
-                   y = prob, yend = prob, color = size),
-               size = size_line * .5) +
-  geom_line(data = psycho_same_slope, size = size_line) +
-  scale_color_brewer(labels = name_size, palette = "Set1") +
-  scale_fill_brewer(labels = name_size, palette = "Set1") +
+p_platform <- ggplot(prob) +
+  facet_grid(size ~ participant, scales = "free") +
+  geom_line(data = psychometric_functions, size = .5 * size_line, 
+            aes(x = duration,y = .fitted,  color = platform)) +
+  geom_segment(data = conf_int, 
+               aes(x = threshold_min, xend = threshold_max, 
+                   y = prob, yend = prob, color = platform),
+               size = size_line) +
+  geom_point(aes(x = duration, y = prob, 
+                 color = platform, shape = platform), size = size_point) +
+  geom_text(data = differences_platform, aes(label = significant, 
+                                    x = .01, y = .9)) +
+  scale_color_brewer(labels = name_size, palette = "Dark2") +
+  scale_fill_brewer(labels = name_size, palette = "Dark2") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
   scale_y_continuous(breaks = seq(0, 1,.25)) +
-  coord_cartesian(ylim = c(0, 1)) +
-  labs(x = label_duration, y = label_proportion, 
-       color = label_size, shape = label_size, fill = label_size) +
-  theme(legend.position = "top", 
-        legend.text = element_text(size = 9)) 
+  coord_cartesian(ylim = c(0, 1), xlim = c(0.005, .3)) +
+  labs(x = label_duration, y = label_proportion,
+       color = label_platform, shape = label_platform, fill = label_platform) +
+  theme(legend.position = "top",
+        legend.text = element_text(size = 9))
 
-ggsave("figures/size_same_slope.pdf", p_size_same_slope, 
-       width = two_columns_width, height = 2.5) 
-
+ggsave("figures/platform.pdf", p_platform, width = two_columns_width, height = 2.5) 
   
-  
-                    ~tibble(prob = predict(., newdata = log10_duration_seq)),
-                    log10_duration = log10_duration_seq) %>% 
-  dplyr::select(-data, -same_slope) %>% 
-  unnest()
+p_psycho <- plot_grid(p_size, p_platform, ncol = 1, labels = c("A", "B"))
 
-
-psychometric_functions <- models %>% 
-  dplyr::select(-dif_slope) %>% 
-  mutate(prob = map(same_slope, 
-                    ~tibble(prob = predict(., newdata = log10_duration_seq)),
-                            log10_duration = log10_duration_seq))
-
-
-                    ) %>% 
-                     bind_cols(log10_duration_seq))
-         
-         %>% 
-           bind_cols(log10_duration_seq)
-  )
-  
-psycho = map(model, ~as_tibble(
-  predict(., newdata = log10_duration_seq_size_df, 
-          type = "response",
-          se.fit = TRUE)) %>% 
-    bind_cols(log10_duration_seq_size_df) %>% 
-    rename(prob = fit) %>% 
-    mutate(prob_min = prob - 2.58 * se.fit, 
-           prob_max = prob + 2.58 * se.fit) # hay que buscar que numero va aqui (t)
-)
-)
-
-pre_two_interaction_one_slope <- augment(
-  model_two_interaction_one_slope, 
-  newdata = log10_duration_seq_size_df,
-  type.predict = "response")
-
+ggsave("figures/psycho.pdf", p_psycho, 
+       width = two_columns_width, height = 5) 

@@ -1,5 +1,5 @@
 log_duration_min <- log10(0.005)
-log_duration_max <- log10(0.25)
+log_duration_max <- log10(0.3)
 
 single_column_width <- 3.5
 two_columns_width <- 7.2

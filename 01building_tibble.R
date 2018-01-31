@@ -23,7 +23,8 @@ dat_resp_crt <- quickreadfiles(path = "data",
 dat_resp <- dat_resp_crt %>% 
   bind_rows(dat_resp_ipad) %>% 
   mutate(size = if_else(size == 1, "Small", "Large"), 
-                        duration_signed = duration * direction)
+                        duration_signed = duration * direction,
+         duration = round(duration, 5))
 
 save(dat_resp, file = "logdata/dat_resp.RData")
 
