@@ -84,7 +84,7 @@ predictions_n <- prob %>%
   summarise(n = first(n)) %>% 
   left_join(predictions) 
 
-prob_samples <- tibble(sample = 1:100, prob = list(predictions_n)) %>% 
+prob_samples <- tibble(sample = 1:1000, prob = list(predictions_n)) %>% 
   unnest() %>% 
   group_by(participant, platform, sample) %>% 
   nest() %>% 
@@ -108,8 +108,8 @@ thresholds_boot <- calculate_thresholds(model_same_slope_boot)
 # confidence intervals 
 conf_int <- thresholds_boot %>% 
   group_by(participant, platform, size) %>% 
-  summarise(threshold_min = quantile(threshold, .05 /2),
-            threshold_max = quantile(threshold, 1 - .05 /2))
+  summarise(threshold_min = quantile(threshold, alpha /2),
+            threshold_max = quantile(threshold, 1 - alpha /2))
 
 conf_int_size <- conf_int %>% 
   mutate(prob = if_else(size == "Large", .75, .73))
@@ -117,13 +117,14 @@ conf_int_size <- conf_int %>%
 conf_int_platform <- conf_int %>% 
   mutate(prob = if_else(platform == "CRT", .75, .73))
 
+
 differences_size <- thresholds_boot %>% 
   dplyr::select(-log_threshold) %>% 
   spread(size, threshold) %>% 
   mutate(dif = Large - Small) %>% 
   group_by(participant, platform) %>% 
-  summarise(dif_min = quantile(dif, .05 /2), 
-            dif_max = quantile(dif, 1 - .05 /2), 
+  summarise(dif_min = quantile(dif, alpha /2), 
+            dif_max = quantile(dif, 1 - alpha /2), 
             significant = if_else(dif_min * dif_max > 0, "*",""))
 
 differences_platform <- thresholds_boot %>% 
@@ -131,11 +132,10 @@ differences_platform <- thresholds_boot %>%
   spread(platform, threshold) %>% 
   mutate(dif = CRT - iPad) %>% 
   group_by(participant, size) %>% 
-  summarise(dif_min = quantile(dif, .05 /2), 
-            dif_max = quantile(dif, 1 - .05 /2), 
+  summarise(dif_min = quantile(dif, alpha /2), 
+            dif_max = quantile(dif, 1 - alpha /2), 
             significant = if_else(dif_min * dif_max > 0, "*",""))
   
-                      
 # plot psychometric functions -------------------------------------------------- 
 p_size <- ggplot(prob) +
   facet_grid(platform~ participant, scales = "free") +
@@ -154,8 +154,9 @@ p_size <- ggplot(prob) +
   scale_fill_brewer(labels = name_size, palette = "Set1") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25)) +
-  coord_cartesian(ylim = c(0, 1), xlim = c(0.005, .3)) +
+  scale_y_continuous(breaks = seq(0, 1,.5),
+                     limits = c(.1, 1)) +
+  coord_cartesian(xlim = c(0.005, .3)) +
   labs(x = label_duration, y = label_proportion,
        color = label_size, shape = label_size, fill = label_size) +
   theme(legend.position = "top",
@@ -179,8 +180,9 @@ p_platform <- ggplot(prob) +
   scale_fill_brewer(labels = name_size, palette = "Dark2") +
   scale_shape_discrete(labels = name_size) +
   scale_x_log10(breaks = c(.01, .04, .16), labels = c(".01", ".04", ".16")) +
-  scale_y_continuous(breaks = seq(0, 1,.25)) +
-  coord_cartesian(ylim = c(0, 1), xlim = c(0.005, .3)) +
+  scale_y_continuous(breaks = seq(0, 1,.5),
+                     limits = c(.1, 1)) +
+  coord_cartesian( xlim = c(0.005, .3)) +
   labs(x = label_duration, y = label_proportion,
        color = label_platform, shape = label_platform, fill = label_platform) +
   theme(legend.position = "top",
@@ -188,7 +190,151 @@ p_platform <- ggplot(prob) +
 
 ggsave("figures/platform.pdf", p_platform, width = two_columns_width, height = 2.5) 
   
-p_psycho <- plot_grid(p_size, p_platform, ncol = 1, labels = c("A", "B"))
+p_psycho <- plot_grid(p_size, p_platform, ncol = 1, labels = "AUTO")
 
 ggsave("figures/psycho.pdf", p_psycho, 
        width = two_columns_width, height = 5) 
+
+# correlations and suppression -------------------------------------------------
+thresholds_long <- thresholds %>% 
+  dplyr::select(-log_threshold) %>% 
+  spread(platform, threshold)  
+
+thresholds_mean_ci <- thresholds %>% 
+  group_by(size, platform) %>% 
+  nest() %>% 
+  mutate(t = map(data, ~t.test(.$threshold) %>% tidy())) %>% 
+  unnest(t) %>% 
+  select(size, platform, estimate, conf.low, conf.high)
+
+thresholds_mean_ci_crt <- thresholds_mean_ci %>% 
+  filter(platform == "CRT") %>% 
+  dplyr::select(-platform) %>% 
+  rename(CRT = estimate, CRTmin = conf.low, CRTmax = conf.high)
+
+thresholds_mean_ci_ipad <- thresholds_mean_ci %>% 
+  filter(platform == "iPad") %>% 
+  dplyr::select(-platform) %>% 
+  rename(iPad = estimate, iPadmin = conf.low, iPadmax = conf.high)
+
+thresholds_mean_ci_long <- thresholds_mean_ci_crt %>% 
+  left_join(thresholds_mean_ci_ipad)
+
+
+log_thresholds_long <- thresholds %>% 
+  dplyr::select(-threshold) %>% 
+  spread(platform, log_threshold)  
+
+linear_model <- log_thresholds_long %>% 
+  group_by(size) %>% 
+  nest() %>% 
+  mutate(cor = map(data, ~cor.test(.$CRT, .$iPad) %>% tidy()), 
+         model = map(data, ~lm(iPad ~ CRT, data = . )), 
+         ci = map(model, confint, level = .99)) 
+
+
+p_cor_size<- ggplot(thresholds_long) +
+  geom_abline(color = "grey", size = size_line) +
+  geom_smooth(aes(x = CRT, y = iPad, color = size), 
+              method = "lm", se = FALSE, size = size_line) +
+  geom_point(aes(x = CRT, y = iPad, color = size, 
+                 shape = size), size = size_point_cor) +
+  geom_point(data = thresholds_mean_ci_long,
+             aes(x = CRT, y = iPad, shape = size), color = "black",
+             size = 2 * size_point_cor, show.legend = FALSE) +
+  geom_errorbarh(data = thresholds_mean_ci_long , height = .1, size = size_line, 
+                 aes(x = CRT, xmin = CRTmin, xmax = CRTmax, 
+                     y = iPad, group = size)) +
+  geom_errorbar(data = thresholds_mean_ci_long , width = .1, size = size_line,
+                aes( ymin = iPadmin, ymax = iPadmax, 
+                     x = CRT, group = size)) +
+  geom_point(data = thresholds_mean_ci_long,
+             aes(x = CRT, y = iPad, shape = size, color = size), 
+             size = 1.5 *size_point_cor) +
+  scale_color_brewer(labels = name_size, palette = "Set1") +
+  scale_shape_discrete(labels = name_size) +
+  coord_equal() +
+  scale_x_log10(breaks = c(.01, .04, .16),
+                labels = c(".01", ".04", ".16"),
+                limits = c(.008,.3)) +
+  scale_y_log10(breaks = c(.01, .04, .16),
+                labels = c(".01", ".04", ".16"),
+                limits = c(.008,.3)) +
+  labs(x = label_crt, y = label_ipad,
+       color = label_size, shape = label_size) +
+  theme(legend.text = element_text(size = 9))
+
+p_cor_size
+
+ss <- thresholds %>% 
+  dplyr::select(-threshold) %>% 
+  spread(size, log_threshold) %>% 
+  mutate(ss = Large - Small) %>% 
+  dplyr::select(-Large, -Small) 
+
+ss_long <- ss %>% 
+  spread(platform, ss)
+
+ss_mean_ci <- ss %>% 
+  group_by(platform) %>% 
+  nest() %>% 
+  mutate(t = map(data, ~t.test(.$ss) %>% tidy())) %>% 
+  unnest(t) %>% 
+  select(platform, estimate, conf.low, conf.high)
+
+ss_mean_ci_crt <- ss_mean_ci %>% 
+  filter(platform == "CRT") %>% 
+  dplyr::select(-platform) %>% 
+  rename(CRT = estimate, CRTmin = conf.low, CRTmax = conf.high)
+
+ss_mean_ci_ipad <- ss_mean_ci %>% 
+  filter(platform == "iPad") %>% 
+  dplyr::select(-platform) %>% 
+  rename(iPad = estimate, iPadmin = conf.low, iPadmax = conf.high)
+
+ss_mean_ci_long <- ss_mean_ci_crt %>% 
+  bind_cols(ss_mean_ci_ipad)
+
+
+lm(iPad ~ CRT, data = ss) %>% confint(level = .99)
+
+p_ss <- ggplot(ss_long, aes(x = CRT, y = iPad)) +
+  geom_abline(color = "grey", size = size_line) +
+  geom_point(size = size_point_cor, color = "#2ca25f") +
+  geom_smooth(method = "lm", se = FALSE, size = size_line, 
+              color = "#2ca25f") +
+  geom_point(data = ss_mean_ci_long,
+             aes(x = CRT, y = iPad), color = "black",
+             size = 2 * size_point_cor, show.legend = FALSE) +
+  geom_errorbarh(data = ss_mean_ci_long , height = .1, size = size_line, 
+                 aes(x = CRT, xmin = CRTmin, xmax = CRTmax, 
+                     y = iPad)) +
+  geom_errorbar(data = ss_mean_ci_long , width = .1, size = size_line,
+                aes( ymin = iPadmin, ymax = iPadmax, 
+                     x = CRT)) +
+  geom_point(data = ss_mean_ci_long,
+             aes(x = CRT, y = iPad), color = "#2ca25f",
+             size = 1.5 * size_point_cor, show.legend = FALSE) +
+  geom_line(aes(lty = "")) +
+  scale_linetype_manual(values = 0) +
+  coord_equal() +
+  scale_color_manual(values = "black")  +
+  scale_x_continuous(breaks = seq(0, 1, .25), 
+                     limits = c(0, 1)) +
+  scale_y_continuous(breaks = seq(0, 1, .25),
+                     limits = c(0, 1)) +
+  labs(x = label_crt_ss, y = label_ipad_ss) +
+  theme(legend.title = element_blank())
+p_ss
+
+p_cor <- plot_grid(p_cor_size, 
+                   p_ss, 
+                   ncol = 1, 
+                   labels = "AUTO",
+                   align = "v")
+
+
+
+ggsave("figures/cor.pdf", p_cor, width = single_column_width, height = 3.5) 
+
+

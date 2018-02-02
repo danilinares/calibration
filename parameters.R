@@ -1,3 +1,4 @@
+alpha <- .01
 log_duration_min <- log10(0.005)
 log_duration_max <- log10(0.3)
 
@@ -5,6 +6,7 @@ single_column_width <- 3.5
 two_columns_width <- 7.2
 
 size_point <- .7
+size_point_cor <- 1.3
 size_line <- .25
 alpha_fill_level <- .25
 
@@ -16,6 +18,8 @@ label_ipad <- "Threshold in iPad (s)"
 label_platform <- "Platform"
 label_small <- "Threshold for small (s)"
 label_large <- "Threshold for large (s)"
+label_crt_ss <- "Suppression index in CRT"
+label_ipad_ss <- "Suppression index in iPad"
 
 name_size <- c(`1` = "Small", `4` = "Large")
 
