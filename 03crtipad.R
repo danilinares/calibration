@@ -32,7 +32,7 @@ model_comparisons <- models %>%
   group_by(participant, platform) %>% 
   mutate(anov = map2(dif_slope, same_slope, anova, test = "Chisq"),
          p.value = map_dbl(anov, ~.$`Pr(>Chi)`[2])) %>% 
-  filter(p.value < .05)
+  filter(p.value < alpha)
 
 model_same_slope <- models %>% dplyr::select(-dif_slope)
 
