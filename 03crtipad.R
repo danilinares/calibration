@@ -105,6 +105,7 @@ conf_int <- thresholds_boot_ok %>%
   summarise(threshold_min = quantile(threshold, alpha /2),
             threshold_max = quantile(threshold, 1 - alpha /2))
 
+### metiendo un pequeño jitter para el plot 
 conf_int_size <- conf_int %>% 
   mutate(prob = if_else(size == "Large", .75, .73))
 
