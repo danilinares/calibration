@@ -84,7 +84,6 @@ thresholds_boot %>%
   summarise(max_threshold = max(threshold))
 
 # hay dos infinitos para large que van acompañados de .2 para el pequeño
-
 thresholds_boot %>% 
   group_by(participant, platform, size) %>% 
   filter(threshold > .32) %>% 
@@ -196,15 +195,28 @@ thresholds_mean_ci <- thresholds %>%
   unnest(t) %>% 
   select(size, platform, estimate, conf.low, conf.high)
 
+thresholds_mean_ci <- thresholds %>% 
+  group_by(size, platform) %>% 
+  nest() %>% 
+  mutate(t = map(data, ~t.test(.$log_threshold) %>% tidy())) %>% 
+  unnest(t) %>% 
+  select(size, platform, estimate, conf.low, conf.high) %>% 
+  group_by(size, platform) %>% 
+  mutate_all(~10^.)
+
 thresholds_mean_ci_crt <- thresholds_mean_ci %>% 
+  ungroup() %>% 
   filter(platform == "CRT") %>% 
   dplyr::select(-platform) %>% 
-  rename(CRT = estimate, CRTmin = conf.low, CRTmax = conf.high)
+  rename(CRT = estimate, CRTmin = conf.low, CRTmax = conf.high) %>% 
+  ungroup() 
 
 thresholds_mean_ci_ipad <- thresholds_mean_ci %>% 
+  ungroup() %>% 
   filter(platform == "iPad") %>% 
   dplyr::select(-platform) %>% 
-  rename(iPad = estimate, iPadmin = conf.low, iPadmax = conf.high)
+  rename(iPad = estimate, iPadmin = conf.low, iPadmax = conf.high) %>% 
+  ungroup() 
 
 thresholds_mean_ci_long <- thresholds_mean_ci_crt %>% 
   left_join(thresholds_mean_ci_ipad)
@@ -220,7 +232,6 @@ linear_model <- log_thresholds_long %>%
   mutate(cor = map(data, ~cor.test(.$CRT, .$iPad) %>% tidy()), 
          model = map(data, ~lm(iPad ~ CRT, data = . )), 
          ci = map(model, confint, level = .99)) 
-
 
 p_cor_size<- ggplot(thresholds_long) +
   geom_abline(color = "grey", size = size_line) +
