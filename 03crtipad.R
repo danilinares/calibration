@@ -43,16 +43,6 @@ log10_duration_seq <- prob %>%
                                        log_duration_max, length.out = 100)))
 
 # psychometric functions  ------------------------------------------------------
-calculate_predictions <- function (df, x_seq){
-  df %>% 
-    mutate(prob = map(same_slope, augment, 
-                      newdata = x_seq, 
-                      type.predict = "response")) %>% 
-    dplyr::select(-data, -same_slope) %>% 
-    unnest() %>% 
-    mutate(duration = 10^log10_duration)
-}
-
 predictions <- model_same_slope%>% 
   calculate_predictions(prob %>% distinct(size, log10_duration))
 
@@ -60,25 +50,9 @@ psychometric_functions <- model_same_slope %>%
   calculate_predictions(log10_duration_seq)
 
 # thresholds -------------------------------------------------------------------
-calculate_thresholds <- function(df) {
-  df %>% 
-    mutate(thresholds = map(same_slope, 
-                            . %>% tidy() %>% 
-                              dplyr::select(term, estimate) %>% 
-                              spread(term, estimate) %>% 
-                              mutate(Small = - sizeSmall / log10_duration, 
-                                     Large = - sizeLarge / log10_duration) %>% 
-                              dplyr::select(Small, Large) %>% 
-                              gather(size, log_threshold) %>% 
-                              mutate(threshold = 10^log_threshold)
-    )) %>% 
-    dplyr::select(-data, -same_slope) %>% 
-    unnest()  
-}
-
 thresholds <- calculate_thresholds(model_same_slope)
 
-# thresholds: bootstrap confidence intervals -----------------------------------
+# thresholds: bootstrap --------------------------------------------------------
 predictions_n <- prob %>% 
   group_by(participant, platform) %>% 
   summarise(n = first(n)) %>% 
@@ -104,8 +78,19 @@ model_same_slope_boot <- prob_samples %>%
 
 thresholds_boot <- calculate_thresholds(model_same_slope_boot)
 
+thresholds_boot %>% 
+  group_by(participant, platform, size) %>% 
+  summarise(max_threshold = max(threshold)) %>% 
+  as.data.frame()
 
-# confidence intervals 
+
+
+ggplot(data= thresholds_boot %>% 
+         filter(threshold < .5), aes(x = threshold, fill = size)) +
+  facet_grid(platform ~ participant) +
+  geom_histogram()
+
+# confidence intervals ---------------------------------------------------------
 conf_int <- thresholds_boot %>% 
   group_by(participant, platform, size) %>% 
   summarise(threshold_min = quantile(threshold, alpha /2),
