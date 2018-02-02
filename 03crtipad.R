@@ -78,20 +78,29 @@ model_same_slope_boot <- prob_samples %>%
 
 thresholds_boot <- calculate_thresholds(model_same_slope_boot)
 
+### checking samples
 thresholds_boot %>% 
   group_by(participant, platform, size) %>% 
-  summarise(max_threshold = max(threshold)) %>% 
-  as.data.frame()
+  summarise(max_threshold = max(threshold))
 
+# hay dos infinitos para large que van acompañados de .2 para el pequeño
 
+thresholds_boot %>% 
+  group_by(participant, platform, size) %>% 
+  filter(threshold > .32) %>% 
+  summarise(n = n())
 
-ggplot(data= thresholds_boot %>% 
-         filter(threshold < .5), aes(x = threshold, fill = size)) +
+#quitamos samples de 03 y 05 (no muchas )
+thresholds_boot_ok <- thresholds_boot %>% 
+  filter(threshold < .32) 
+
+ggplot(data = thresholds_boot_ok, 
+       aes(x = threshold, fill = size)) +
   facet_grid(platform ~ participant) +
   geom_histogram()
 
 # confidence intervals ---------------------------------------------------------
-conf_int <- thresholds_boot %>% 
+conf_int <- thresholds_boot_ok %>% 
   group_by(participant, platform, size) %>% 
   summarise(threshold_min = quantile(threshold, alpha /2),
             threshold_max = quantile(threshold, 1 - alpha /2))
@@ -102,8 +111,7 @@ conf_int_size <- conf_int %>%
 conf_int_platform <- conf_int %>% 
   mutate(prob = if_else(platform == "CRT", .75, .73))
 
-
-differences_size <- thresholds_boot %>% 
+differences_size <- thresholds_boot_ok %>% 
   dplyr::select(-log_threshold) %>% 
   spread(size, threshold) %>% 
   mutate(dif = Large - Small) %>% 
@@ -112,7 +120,7 @@ differences_size <- thresholds_boot %>%
             dif_max = quantile(dif, 1 - alpha /2), 
             significant = if_else(dif_min * dif_max > 0, "*",""))
 
-differences_platform <- thresholds_boot %>% 
+differences_platform <- thresholds_boot_ok %>% 
   dplyr::select(-log_threshold) %>% 
   spread(platform, threshold) %>% 
   mutate(dif = CRT - iPad) %>% 
@@ -147,8 +155,6 @@ p_size <- ggplot(prob) +
   theme(legend.position = "top",
         legend.text = element_text(size = 9))
 
-ggsave("figures/size.pdf", p_size, width = two_columns_width, height = 2.5) 
-
 p_platform <- ggplot(prob) +
   facet_grid(size ~ participant, scales = "free") +
   geom_line(data = psychometric_functions, size = .5 * size_line, 
@@ -173,12 +179,9 @@ p_platform <- ggplot(prob) +
   theme(legend.position = "top",
         legend.text = element_text(size = 9))
 
-ggsave("figures/platform.pdf", p_platform, width = two_columns_width, height = 2.5) 
-  
 p_psycho <- plot_grid(p_size, p_platform, ncol = 1, labels = "AUTO")
 
-ggsave("figures/psycho.pdf", p_psycho, 
-       width = two_columns_width, height = 5) 
+ggsave("figures/psycho.pdf", p_psycho, width = two_columns_width, height = 5) 
 
 # correlations and suppression -------------------------------------------------
 thresholds_long <- thresholds %>% 
