@@ -11,15 +11,15 @@ size_line <- .25
 alpha_fill_level <- .25
 
 label_duration <- "Duration (s)"
-label_proportion <- "Probability correct"
+label_proportion <- "Proportion correct"
 label_size <- "Size"
-label_crt <- "Threshold in CRT (s)"
-label_ipad <- "Threshold in iPad (s)"
+label_crt <- "Threshold on CRT (s)"
+label_ipad <- "Threshold on iPad (s)"
 label_platform <- "Platform"
 label_small <- "Threshold for small (s)"
 label_large <- "Threshold for large (s)"
-label_crt_ss <- "Suppression index in CRT"
-label_ipad_ss <- "Suppression index in iPad"
+label_crt_ss <- "Suppression index on CRT"
+label_ipad_ss <- "Suppression index on iPad"
 
 name_size <- c(`1` = "Small", `4` = "Large")
 

@@ -1,3 +1,5 @@
+# acordarse de advertir que glm tieme problemas y que hicimos bootsrap con quickpsy, 
+
 library(tidyverse)
 library(broom)
 library(cowplot)
@@ -245,7 +247,6 @@ dif_slope %>%
   filter(p.value < .05)
 
 # Correlation plots ------------------------------------------------------------
-
 thresholds_same_slope_all_size <- thresholds_same_slope_all %>% 
   dplyr::select(-thresholdmin, -thresholdmax) %>% 
   spread(platform, threshold)  
@@ -314,10 +315,11 @@ p_cor <- plot_grid(p_correlation_size,
 ggsave("figures/cor.pdf", p_cor, width = single_column_width, height = 3.5) 
 
 
-
-
-
-
+# anova threholds
+aov(threshold ~ size * platform +
+      Error(participant / (size * platform)), 
+            data = thresholds_same_slope_all) %>% 
+  summary()
 
 
 

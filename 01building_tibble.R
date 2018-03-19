@@ -19,6 +19,10 @@ dat_resp_crt <- quickreadfiles(path = "data",
          correct, contrast) %>% 
   mutate(size = if_else(size == 90, 4, 1))
 
+ages <- tibble(participant = str_pad(1:13, 2, pad = "0"),
+              age = c(25, 33, 33, 24, 28, 25, 34, 22, 25, 25, 28, 22, 41),
+              gender = c("F", "M", "M","M", "F","M", "F","F", "F","M", "F","F", "F"))
+
 
 dat_resp <- dat_resp_crt %>% 
   bind_rows(dat_resp_ipad) %>% 
