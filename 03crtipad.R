@@ -369,3 +369,83 @@ ggplot(prob_sessions) +
 
 
 
+
+
+
+
+
+
+
+
+
+# CALCULO DE P.VALUES PARA EL MODELO SAME SLOPE
+
+# AÑADIR LOS .fitted AL MODELO
+predictions2 <- predictions %>%
+  dplyr::select(-duration, -.se.fit) 
+
+model_same_slope2 <- model_same_slope %>% 
+  dplyr::select(-same_slope) %>% 
+  unnest() %>% 
+  full_join(predictions2)
+
+
+
+
+
+
+# REAL DATA
+# likelihood de cada valor sin usar ningun modelo(prob) y usando el modelo(.fitted)
+same_slope <- model_same_slope2 %>% 
+  mutate(like = dbinom(k, n, prob), 
+         like_model = dbinom(k, n, .fitted))    
+
+# multiplicar todos los likelihoods y dividir modelo entre ningun modelo
+same_slope <- same_slope %>% 
+  group_by(participant, platform) %>% 
+  summarise(like = prod(like), 
+            like_model = prod(like_model),
+            like_model_final = like_model / like)  
+
+
+
+
+
+# SAMPLES
+# likelihood de cada sample sin modelo(prob) y con modelo(.fitted)
+same_slope_boot <- model_same_slope_boot %>% 
+  dplyr::select(-same_slope) %>% 
+  mutate(data = map(data, . %>% 
+                    mutate(like_sample = dbinom(k, n, prob),
+                          like_model_sample = dbinom(k, n, .fitted))))  
+
+# multiplicar todos los likelihoods y dividir modelo entre ningun modelo
+same_slope_boot <- same_slope_boot %>% 
+  mutate(data = map(data, . %>% 
+                    ungroup() %>% 
+                    summarise(like_sample = prod(like_sample), 
+                              like_model_sample = prod(like_model_sample),
+                              like_model_sample_final = like_model_sample / like_sample))) 
+
+
+
+
+# CONTAR CUANTOS SAMPLES TIENEN UN LIKELIHOOD MENOR QUE EL DE LOS DATOS REALES
+p_values <- same_slope_boot %>% 
+  unnest() %>% 
+  full_join(same_slope) %>% 
+  group_by(participant, platform) %>% 
+  summarise(p = mean(like_model_sample_final < like_model_final))
+
+p_values
+ 
+
+
+
+
+
+
+
+
+
+
