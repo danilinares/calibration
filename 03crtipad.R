@@ -118,7 +118,7 @@ conf_int_size <- conf_int %>%
 conf_int_platform <- conf_int %>% 
   mutate(prob = if_else(platform == "CRT", .75, .73))
 
-differences_size <- thresholds_boot_ok %>% 
+differences_size <- thresholds_boot_ok %>%       # esto falla desde aqui hasta correlations and supression
   dplyr::select(-log_threshold) %>% 
   spread(size, threshold) %>% 
   mutate(dif = Large - Small) %>% 
@@ -437,13 +437,39 @@ p_values <- same_slope_boot %>%
   group_by(participant, platform) %>% 
   summarise(p = mean(like_model_sample_final < like_model_final))
 
+# sin hacer la division no vale????
+p_values2 <- same_slope_boot %>%   
+  unnest() %>% 
+  full_join(same_slope) %>% 
+  group_by(participant, platform) %>% 
+  summarise(p = mean(like_model_sample < like_model))
+
 p_values
+
+p_values2
  
 
 
 
+# PRUEBA VELOCIDAD
+prob_samples <- tibble(sample = 1:1000, prob = list(predictions_n)) %>% 
+  unnest() %>% 
+  group_by(participant, platform, sample) %>% 
+  nest() %>% 
+  mutate(data = map(data, . %>% 
+                      rowwise() %>% 
+                      mutate(k = rbinom(1, size = n, prob = .fitted), 
+                             r = n -k, 
+                             prob = k /n)))
 
 
+
+prob_samples <- tibble(sample = 1:1000, prob = list(predictions_n)) %>% 
+  unnest() %>% 
+  group_by(participant, platform, sample) %>% 
+  mutate(k = rbinom(1, size = n, prob = .fitted), 
+                    r = n -k, 
+                    prob = k /n)
 
 
 
