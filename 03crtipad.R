@@ -31,8 +31,7 @@ models <- prob %>%
 model_comparisons <- models %>% 
   group_by(participant, platform) %>% 
   mutate(anov2 = map2(dif_slope, same_slope, anova, test = "Chisq"),
-         p.value = map_dbl(anov2, ~.$`Pr(>Chi)`[2]),
-         anov1 = map(same_slope, anova)) %>% 
+         p.value = map_dbl(anov2, ~.$`Pr(>Chi)`[2])) %>% 
   filter(p.value < alpha)
 
 model_same_slope <- models %>% dplyr::select(-dif_slope)
@@ -363,6 +362,15 @@ ggplot(prob_sessions) +
        color = label_size, shape = label_size, fill = label_size) +
   theme(legend.position = "top",
         legend.text = element_text(size = 9))
+
+thresholds_ipad <- thresholds %>% 
+  filter(platform == "iPad")
+
+ss_ipad <- ss %>% 
+  filter(platform == "iPad")
+
+save(thresholds_ipad, file = "thresholds_ipad.RData")
+save(ss_ipad, file = "ss_ipad.RData")
 
 
 
