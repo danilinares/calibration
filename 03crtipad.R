@@ -57,7 +57,6 @@ aov(log_threshold ~ platform * size  +
       Error(participant / (platform * size)), data = thresholds) %>% 
   summary()
 
-
 # thresholds: bootstrap --------------------------------------------------------
 predictions_n <- prob %>% 
   group_by(participant, platform) %>% 
@@ -417,8 +416,6 @@ same_slope <- same_slope %>%
 
 
 
-
-
 # SAMPLES
 # likelihood de cada sample sin modelo(prob) y con modelo(.fitted)
 same_slope_boot <- model_same_slope_boot %>% 
@@ -437,7 +434,6 @@ same_slope_boot <- same_slope_boot %>%
 
 
 
-
 # CONTAR CUANTOS SAMPLES TIENEN UN LIKELIHOOD MENOR QUE EL DE LOS DATOS REALES
 p_values <- same_slope_boot %>% 
   unnest() %>% 
@@ -445,39 +441,47 @@ p_values <- same_slope_boot %>%
   group_by(participant, platform) %>% 
   summarise(p = mean(like_model_sample_final < like_model_final))
 
-# sin hacer la division no vale????
-p_values2 <- same_slope_boot %>%   
-  unnest() %>% 
-  full_join(same_slope) %>% 
-  group_by(participant, platform) %>% 
-  summarise(p = mean(like_model_sample < like_model))
-
 p_values
 
-p_values2
- 
 
+tibble(sample = 1:4) %>% mutate(x = rnorm(n()))
 
 
 # PRUEBA VELOCIDAD
-prob_samples <- tibble(sample = 1:1000, prob = list(predictions_n)) %>% 
+prob_samples <- tibble(sample = 1:100, prob = list(predictions_n)) %>% 
   unnest() %>% 
   group_by(participant, platform, sample) %>% 
   nest() %>% 
   mutate(data = map(data, . %>% 
-                      rowwise() %>% 
-                      mutate(k = rbinom(1, size = n, prob = .fitted), 
-                             r = n -k, 
-                             prob = k /n)))
+                   #   rowwise() %>% 
+                      mutate(#k = rbinom(1, size = n, prob = .fitted), 
+                             k =  .fitted, 
+                           #  r = n -k, 
+                             prob = k / n)))
+
+ggplot(prob_samples2) +
+  facet_wrap(participant~size) +
+  geom_line(aes(x = duration, y = prob, lty = platform, color = factor(sample)))
 
 
-
-prob_samples <- tibble(sample = 1:1000, prob = list(predictions_n)) %>% 
+prob_samples2 <- tibble(sample = 1:100, prob = list(predictions_n)) %>% 
   unnest() %>% 
-  group_by(participant, platform, sample) %>% 
+  ungroup() %>% 
+  rowwise() %>% 
   mutate(k = rbinom(1, size = n, prob = .fitted), 
-                    r = n -k, 
+                    r = n - k, 
                     prob = k /n)
+
+prob_samples2 <- tibble(sample = 1:10, prob = list(predictions_n)) %>% 
+  unnest() %>% 
+  ungroup()
+
+prob_samples2 %>% mutate(k = rbinom(1, size = n, prob = .fitted), 
+                         r = n - k, 
+                         prob = k /n)
+
+
+
 
 
 
